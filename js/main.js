@@ -4,6 +4,14 @@ const slides = document.querySelectorAll('.slide');
 const dots = document.querySelectorAll('.dot');
 const slidesContainer = document.querySelector('.carousel-slides');
 
+// 防御性检查
+if (!slides.length || !dots.length || !slidesContainer) {
+    console.log('轮播图元素未找到，跳过初始化');
+} else {
+    // 初始化轮播图
+    initCarousel();
+}
+
 // 初始化轮播图
 function initCarousel() {
     showSlide(currentSlideIndex);
@@ -145,8 +153,6 @@ if (lazyImages.length > 0) {
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
-    initCarousel();
-    
     // 添加页面加载动画
     document.body.style.opacity = '0';
     document.body.style.transition = 'opacity 0.5s ease';
