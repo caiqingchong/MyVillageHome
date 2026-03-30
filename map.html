@@ -611,71 +611,93 @@ document.getElementById('addForm').addEventListener('submit', function(e) {
     // 拼接搜索地址
     const addrKeywords = ['省', '市', '区', '县', '镇', '街', '路', '村', '乡'];
     const hasFullAddr = addrKeywords.some(k => fd.name.indexOf(k) !== -1 && fd.name.length > 4);
-    // Geocoder 用完整地址，PlaceSearch 用简短地名（POI搜索更容易命中）
     const geoAddr = hasFullAddr ? fd.name : `河南省周口市沈丘县${fd.name}`;
     const poiAddr = hasFullAddr ? fd.name : `沈丘县${fd.name}`;
 
-    let geocodeDone = false;
+    // 立即保存客户（默认使用公司位置），确保添加始终成功
+    const defaultPos = [...companyPos];
+    const newV = { id: getNextId(), pos: defaultPos, materials: initMaterials(), ...fd };
+    villages.push(newV);
+    saveVillages();
+    renderVillage(newV);
+    updateCount();
+    closeModal();
+    map.setZoomAndCenter(15, defaultPos);
+    showToast('✅ 客户已添加，正在尝试自动定位...');
 
-    // 通用完成方法
-    function finalizeAdd(pos, source) {
-        if (geocodeDone) return;
-        geocodeDone = true;
-        clearTimeout(timeoutId);
-        btn.disabled = false;
-        btn.textContent = '📍 保存并标注地图';
-        const newV = { id: getNextId(), pos, materials: initMaterials(), ...fd };
-        villages.push(newV);
-        saveVillages();
-        renderVillage(newV);
-        updateCount();
-        closeModal();
-        map.setZoomAndCenter(16, pos);
-        if (source) console.log('定位成功，来源:', source);
+    // 后台尝试地理编码，成功则更新坐标
+    tryGeocodeInBackground(newV, geoAddr, poiAddr);
+});
+
+// Toast 提示
+function showToast(msg) {
+    let t = document.getElementById('mapToast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'mapToast';
+        t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(44,95,45,0.95);color:white;padding:10px 22px;border-radius:24px;font-size:0.88rem;z-index:9999;transition:opacity 0.3s;';
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// 后台地理编码（不阻塞用户操作）
+function tryGeocodeInBackground(customer, geoAddr, poiAddr) {
+    let done = false;
+
+    function updatePos(pos, source) {
+        if (done) return;
+        done = true;
+        // 更新客户坐标
+        const idx = villages.findIndex(v => v.id === customer.id);
+        if (idx >= 0) {
+            villages[idx].pos = pos;
+            saveVillages();
+            // 更新地图标注位置
+            if (markerMap[customer.id]) {
+                markerMap[customer.id].setPosition(new AMap.LngLat(pos[0], pos[1]));
+                map.setZoomAndCenter(15, pos);
+            }
+            showToast(`✅ 已自动定位到「${customer.name}」`);
+            console.log('地理编码成功:', source, pos);
+        }
     }
 
-    // 15秒超时兜底
-    const timeoutId = setTimeout(function() {
-        finalizeAdd([...companyPos], '超时兜底');
-        setTimeout(() => alert(`「${fd.name}」地址定位超时，已暂时标注在公司位置。\n可在客户详情页手动调整坐标。`), 200);
+    // 超时保护（15秒后放弃）
+    setTimeout(() => {
+        if (!done) {
+            done = true;
+            console.log('地理编码超时，保留默认位置');
+        }
     }, 15000);
 
-    // 同时发起 Geocoder 和 PlaceSearch，谁先返回有效结果就用谁
-    let geoFailed = false, poiFailed = false;
-
-    // Geocoder 请求
-    const geocoder = new AMap.Geocoder({ city: '周口市' });
-    geocoder.getLocation(geoAddr, function(status, result) {
-        if (geocodeDone) return;
-        if (status === 'complete' && result.geocodes && result.geocodes.length > 0) {
-            const loc = result.geocodes[0].location;
-            finalizeAdd([parseFloat(loc.getLng().toFixed(5)), parseFloat(loc.getLat().toFixed(5))], 'Geocoder');
-        } else {
-            geoFailed = true;
-            if (poiFailed) {
-                finalizeAdd([...companyPos], '均失败');
-                setTimeout(() => alert(`「${fd.name}」未能自动定位，已暂时标注在公司位置。\n可在客户详情页手动调整坐标。`), 200);
+    // Geocoder
+    try {
+        const geocoder = new AMap.Geocoder({ city: '周口市' });
+        geocoder.getLocation(geoAddr, function(status, result) {
+            if (done) return;
+            if (status === 'complete' && result.geocodes && result.geocodes.length > 0) {
+                const loc = result.geocodes[0].location;
+                updatePos([parseFloat(loc.getLng().toFixed(5)), parseFloat(loc.getLat().toFixed(5))], 'Geocoder');
             }
-        }
-    });
+        });
+    } catch(e) { console.warn('Geocoder异常:', e); }
 
-    // PlaceSearch 请求（并行）
-    const ps = new AMap.PlaceSearch({ city: '周口市', pageSize: 1 });
-    ps.search(poiAddr, function(status, result) {
-        if (geocodeDone) return;
-        const pois = result && result.poiList && result.poiList.pois;
-        if (status === 'complete' && pois && pois.length > 0) {
-            const loc = pois[0].location;
-            finalizeAdd([parseFloat(loc.getLng().toFixed(5)), parseFloat(loc.getLat().toFixed(5))], 'PlaceSearch');
-        } else {
-            poiFailed = true;
-            if (geoFailed) {
-                finalizeAdd([...companyPos], '均失败');
-                setTimeout(() => alert(`「${fd.name}」未能自动定位，已暂时标注在公司位置。\n可在客户详情页手动调整坐标。`), 200);
+    // PlaceSearch
+    try {
+        const ps = new AMap.PlaceSearch({ city: '周口市', pageSize: 1 });
+        ps.search(poiAddr, function(status, result) {
+            if (done) return;
+            const pois = result && result.poiList && result.poiList.pois;
+            if (status === 'complete' && pois && pois.length > 0) {
+                const loc = pois[0].location;
+                updatePos([parseFloat(loc.getLng().toFixed(5)), parseFloat(loc.getLat().toFixed(5))], 'PlaceSearch');
             }
-        }
-    });
-});
+        });
+    } catch(e) { console.warn('PlaceSearch异常:', e); }
+}
 
 // ==========================================
 // 点击地图显示坐标
