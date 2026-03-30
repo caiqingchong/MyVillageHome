@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目分布地图 - 乡野别居</title>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=c7db209c07ba96a8fc0819bb3e38e0f3&plugin=AMap.Scale,AMap.ToolBar,AMap.Geocoder,AMap.PlaceSearch"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #f0f4f0;
+        }
+
+        /* 顶部导航 */
+        .map-header {
+            background: #2c5f2d;
+            color: white;
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .map-header .logo {
+            font-size: 1.25rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .map-header .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .map-header .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.35); }
+
+        /* 主体布局 */
+        .map-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 260px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+            z-index: 500;
+            flex-shrink: 0;
+        }
+        .sidebar-title {
+            background: #f0f7f0;
+            padding: 14px 16px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #2c5f2d;
+            border-bottom: 1px solid #e0eee0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .village-count {
+            background: #2c5f2d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: normal;
+        }
+        .village-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        .village-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid #f5f5f5;
+            gap: 10px;
+        }
+        .village-item:hover { background: #f0f7f0; }
+        .village-item.active { background: #e8f4e8; }
+        .village-num {
+            width: 24px;
+            height: 24px;
+            background: #2c5f2d;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .village-info { flex: 1; }
+        .village-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #222;
+        }
+        .village-desc {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* 底部提示 */
+        .sidebar-tip {
+            padding: 10px 14px;
+            background: #fffbe6;
+            border-top: 1px solid #ffe58f;
+            font-size: 0.75rem;
+            color: #8a6d00;
+            line-height: 1.5;
+        }
+
+        /* 地图区域 */
+        #map { min-height: 400px; }
+
+        /* 地图控件 */
+        .map-controls {
+            position: absolute;
+            top: 70px;
+            right: 16px;
+            z-index: 800;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .ctrl-btn {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .ctrl-btn:hover { background: #f0f7f0; border-color: #2c5f2d; }
+        .ctrl-btn.active { background: #2c5f2d; color: white; border-color: #2c5f2d; }
+
+        /* 坐标提示框 */
+        .coord-tip {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            z-index: 800;
+            background: rgba(0,0,0,0.72);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            display: none;
+        }
+
+        /* 隐藏高德默认 logo 可选 */
+        .amap-logo, .amap-copyright { opacity: 0.6; }
+
+        /* ======== 添加客户模态框 ======== */
+        .add-btn {
+            margin: 10px 12px 0;
+            padding: 9px;
+            background: #2c5f2d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            cursor: pointer;
+            width: calc(100% - 24px);
+            font-weight: bold;
+            letter-spacing: 1px;
+            transition: background 0.2s;
+        }
+        .add-btn:hover { background: #1e4420; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: white;
+            border-radius: 14px;
+            padding: 22px 24px;
+            width: 380px;
+            max-width: 94vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.25);
+        }
+        .modal-title {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #1a3a1a;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8f4e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: #aaa;
+            line-height: 1;
+            padding: 0;
+        }
+        .form-row { display: flex; gap: 10px; }
+        .form-row .form-group { flex: 1; }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .form-group label span { color: #e74c3c; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+            background: #fafafa;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #2c5f2d;
+            background: white;
+        }
+        .form-group textarea { resize: vertical; height: 60px; }
+        .form-tip { font-size: 0.75rem; color: #aaa; margin-top: 3px; }
+        .form-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .form-actions button {
+            flex: 1;
+            padding: 11px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-cancel { background: #f0f0f0; color: #666; }
+        .btn-cancel:hover { background: #e0e0e0; }
+        .btn-submit { background: #2c5f2d; color: white; }
+        .btn-submit:hover { background: #1e4420; }
+        .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+        /* 移动端适配 */
+        @media (max-width: 640px) {
+            .sidebar { width: 100%; height: 200px; flex-direction: row; }
+            .map-body { flex-direction: column-reverse; }
+            .sidebar-title { display: none; }
+            .village-list { display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 6px; }
+            .village-item { min-width: 120px; flex-shrink: 0; padding: 8px 10px; }
+            .sidebar-tip { display: none; }
+            .map-controls { top: auto; bottom: 220px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<header class="map-header">
+    <div class="logo">乡野别居</div>
+    <div class="header-right">
+        <span class="subtitle">客户建房分布地图 · 沈丘县范营乡</span>
+        <a href="index.html" class="back-btn">← 返回首页</a>
+    </div>
+</header>
+
+<!-- 主体 -->
+<div class="map-body">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+        <div class="sidebar-title">
+            客户项目分布
+            <span class="village-count" id="villageCount">-- 个</span>
+        </div>
+        <button class="add-btn" onclick="openModal()">&#43; 添加新客户</button>
+        <div class="village-list" id="villageList"></div>
+        <div class="sidebar-tip">
+            💡 点击村名可定位到地图上的位置；标注位置为估算坐标，如需精确调整请联系我们。
+        </div>
+    </aside>
+
+    <!-- 地图容器 -->
+    <div style="position:relative;flex:1;overflow:hidden;">
+        <div id="map" style="width:100%;height:100%;"></div>
+
+        <!-- 右侧控件 -->
+        <div class="map-controls">
+            <button class="ctrl-btn active" id="btnStreet" onclick="switchLayer('street')">🗺 街道图</button>
+            <button class="ctrl-btn" id="btnSatellite" onclick="switchLayer('satellite')">🛰 卫星图</button>
+            <button class="ctrl-btn" id="btnLocate" onclick="locateAll()">📍 全览</button>
+        </div>
+
+        <!-- 点击坐标提示 -->
+        <div class="coord-tip" id="coordTip"></div>
+    </div>
+</div>
+
+<!-- 添加客户模态框 -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal-box">
+        <div class="modal-title">
+            ➕ 添加新客户
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <form id="addForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>客户姓名 <span>*</span></label>
+                    <input id="f_customer" placeholder="如：李书祥" required>
+                </div>
+                <div class="form-group">
+                    <label>所在村庄 <span>*</span></label>
+                    <input id="f_village" placeholder="如：普花园" required>
+                    <div class="form-tip">📍 可输入村名或完整地址，如：付井镇陈观村</div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>楼层数</label>
+                    <input id="f_floors" type="number" min="1" max="10" value="2">
+                </div>
+                <div class="form-group">
+                    <label>建筑面积（㎡）</label>
+                    <input id="f_area" type="number" step="0.01" placeholder="0.00">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>负责人</label>
+                    <input id="f_contact" placeholder="施工负责人">
+                </div>
+                <div class="form-group">
+                    <label>联系电话</label>
+                    <input id="f_phone" type="tel" placeholder="手机号码">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>客户要求</label>
+                <textarea id="f_requirements" placeholder="建房要求、风格偏好等"></textarea>
+            </div>
+            <div class="form-group">
+                <label>备注</label>
+                <textarea id="f_note" placeholder="合同信息、特殊情况等"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
+                <button type="submit" class="btn-submit" id="submitBtn">📍 保存并标注地图</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// localStorage 数据管理
+// ==========================================
+const STORAGE_KEY = 'fanying_customers_v1';
+
+function initMaterials() {
+    return { '钢筋': [], '水泥': [], '沙子': [], '砖头': [], '石子': [], '混凝土': [], '机械费': [] };
+}
+
+const defaultVillages = [
+    { id: 1,  name:"赵寨",    pos:[115.0180,33.4820], customer:"贾建伟",   floors:2, area:226.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id: 2,  name:"和尚庄",  pos:[114.9920,33.4820], customer:"范东林",   floors:2, area:290.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id: 3,  name:"大褚庄",  pos:[115.0250,33.4650], customer:"褚海参",   floors:3, area:157.10,  phone:"", contact:"", requirements:"", note:"合同模板不同，面积在",     materials:initMaterials() },
+    { id: 4,  name:"孙庄",    pos:[115.0080,33.4750], customer:"孙志民",   floors:2, area:161.60,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id: 5,  name:"小褚庄",  pos:[115.0220,33.4600], customer:"褚海岗",   floors:2, area:253.50,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id: 6,  name:"张营",    pos:[114.9850,33.4700], customer:"赵建立",   floors:2, area:232.75,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id: 7,  name:"普花园",  pos:[115.0050,33.4780], customer:"李书祥",   floors:2, area:311.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id: 8,  name:"李省城",  pos:[115.0120,33.4550], customer:"李小辉",   floors:2, area:231.60,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id: 9,  name:"管善庄",  pos:[115.0300,33.4880], customer:"管大伟",   floors:2, area:465.70,  phone:"", contact:"", requirements:"", note:"合同甲方签名为王瑞如",   materials:initMaterials() },
+    { id:10,  name:"蒋营",    pos:[114.9950,33.4580], customer:"孙岭",     floors:2, area:387.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id:11,  name:"褚王庄",  pos:[115.0280,33.4720], customer:"褚清",     floors:2, area:346.51,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id:12,  name:"郭庄",    pos:[115.0350,33.4680], customer:"郭玉合",   floors:2, area:411.00,  phone:"", contact:"", requirements:"", note:"面积辨认有一定难度",       materials:initMaterials() },
+    { id:13,  name:"金庄",    pos:[115.0080,33.4900], customer:"李兵",     floors:2, area:126.47,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id:14,  name:"钱寨",    pos:[115.0050,33.4620], customer:"刘凯",     floors:2, area:270.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id:15,  name:"陈于",    pos:[115.0180,33.4520], customer:"陈洪林",   floors:2, area:153.52,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id:16,  name:"韩营",    pos:[114.9800,33.4850], customer:"韩海岑",   floors:2, area:339.70,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id:17,  name:"马堂",    pos:[115.0150,33.4980], customer:"韩建邦",   floors:2, area:453.87,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() }
+];
+
+function loadVillages() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+        try {
+            const data = JSON.parse(raw);
+            // 确保旧数据字段完整
+            data.forEach(v => {
+                if (!v.materials) v.materials = initMaterials();
+                ['phone','contact','requirements'].forEach(k => { if (v[k] === undefined) v[k] = ''; });
+                // 确保每种材料键存在
+                Object.keys(initMaterials()).forEach(m => { if (!v.materials[m]) v.materials[m] = []; });
+            });
+            return data;
+        } catch(e) {}
+    }
+    const copy = JSON.parse(JSON.stringify(defaultVillages));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
+    return copy;
+}
+
+function saveVillages() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(villages));
+}
+
+function getNextId() {
+    return villages.length > 0 ? Math.max(...villages.map(v => v.id)) + 1 : 1;
+}
+
+let villages = loadVillages();
+
+// ==========================================
+// 初始化高德地图
+// ==========================================
+const map = new AMap.Map('map', {
+    zoom: 13,
+    center: [115.010, 33.475],
+    resizeEnable: true
+});
+map.addControl(new AMap.Scale());
+map.addControl(new AMap.ToolBar({ position: 'RT' }));
+
+function switchLayer(type) {
+    if (type === 'street') {
+        map.setLayers([new AMap.TileLayer()]);
+        document.getElementById('btnStreet').classList.add('active');
+        document.getElementById('btnSatellite').classList.remove('active');
+    } else {
+        map.setLayers([new AMap.TileLayer.Satellite(), new AMap.TileLayer.RoadNet()]);
+        document.getElementById('btnSatellite').classList.add('active');
+        document.getElementById('btnStreet').classList.remove('active');
+    }
+}
+function locateAll() { map.setZoomAndCenter(13, [115.010, 33.475]); }
+
+// ==========================================
+// 自定义标注
+// ==========================================
+function makeMarkerContent(num, name) {
+    return `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+        <div style="width:30px;height:30px;background:#2c5f2d;color:white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid white;flex-shrink:0;"><span style="transform:rotate(45deg);font-size:11px;font-weight:bold;">${num}</span></div>
+        <div style="margin-top:4px;background:rgba(44,95,45,0.9);color:white;font-size:11px;font-weight:bold;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);">${name}</div>
+    </div>`;
+}
+
+// ==========================================
+// 信息窗口 & 距离计算
+// ==========================================
+const infoWindow = new AMap.InfoWindow({ isCustom: true, content: '', offset: new AMap.Pixel(0, -60) });
+function closeInfo() { infoWindow.close(); }
+
+function calcDist(pos1, pos2) {
+    const R = 6371, toRad = d => d * Math.PI / 180;
+    const dLat = toRad(pos2[1]-pos1[1]), dLng = toRad(pos2[0]-pos1[0]);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(pos1[1]))*Math.cos(toRad(pos2[1]))*Math.sin(dLng/2)**2;
+    return (R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(1);
+}
+
+// ==========================================
+// 公司总部标注（红星）
+// ==========================================
+const companyPos = [115.0020, 33.4730];
+const companyMarker = new AMap.Marker({
+    position: new AMap.LngLat(companyPos[0], companyPos[1]),
+    content: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;"><div style="width:42px;height:42px;background:radial-gradient(circle,#e74c3c,#c0392b);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(192,57,43,0.55);border:3px solid white;font-size:22px;line-height:1;">&#9733;</div><div style="margin-top:5px;background:rgba(192,57,43,0.92);color:white;font-size:11px;font-weight:bold;padding:3px 8px;border-radius:10px;white-space:nowrap;">范营大包建房公司</div></div>`,
+    offset: new AMap.Pixel(-40, -60),
+    zIndex: 200
+});
+companyMarker.setMap(map);
+const companyPopupHtml = `<div style="background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:14px 16px;min-width:200px;font-family:-apple-system,'PingFang SC',sans-serif;position:relative;"><div onclick="closeInfo()" style="position:absolute;top:8px;right:10px;cursor:pointer;color:#aaa;font-size:15px;">&#x2715;</div><div style="font-size:1rem;font-weight:bold;color:#c0392b;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #fde8e8;">&#9733; 范营大包建房公司</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">地址：沈丘县范营乡村委西50米</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">电话：13522120000</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">时间：8:00～20:00</div><div style="margin-top:6px;"><span style="background:#fdecea;color:#c0392b;padding:2px 9px;border-radius:4px;font-size:0.75rem;">公司总部</span></div><div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid white;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);"></div></div>`;
+companyMarker.on('click', () => { infoWindow.setContent(companyPopupHtml); infoWindow.open(map, companyMarker.getPosition()); });
+
+// ==========================================
+// 渲染标注 & 侧边栏（可复用）
+// ==========================================
+const markerMap = {};
+const listEl = document.getElementById('villageList');
+let activeItem = null;
+
+function renderVillage(v) {
+    const marker = new AMap.Marker({
+        position: new AMap.LngLat(v.pos[0], v.pos[1]),
+        content: makeMarkerContent(v.id, v.name),
+        offset: new AMap.Pixel(-30, -58)
+    });
+    marker.setMap(map);
+    markerMap[v.id] = marker;
+
+    const dist = calcDist(v.pos, companyPos);
+    const popupHtml = `<div style="background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:14px 16px;min-width:195px;font-family:-apple-system,'PingFang SC',sans-serif;position:relative;">
+        <div onclick="closeInfo()" style="position:absolute;top:8px;right:10px;cursor:pointer;color:#aaa;font-size:15px;">&#x2715;</div>
+        <div style="font-size:1rem;font-weight:bold;color:#1a3a1a;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #e0eee0;">📍 ${v.name}</div>
+        <div style="font-size:0.82rem;color:#555;line-height:1.9;">客户：<b>${v.customer}</b></div>
+        <div style="font-size:0.82rem;color:#555;line-height:1.9;">楼层：<b>${v.floors}层</b> &nbsp; 面积：<b>${v.area}㎡</b></div>
+        <div style="font-size:0.82rem;color:#555;line-height:1.9;">距公司：<b style="color:#2c5f2d;">约 ${dist} km</b></div>
+        ${v.note ? `<div style="font-size:0.78rem;color:#d35400;margin-top:4px;padding:4px 6px;background:#fff3e0;border-radius:4px;">⚠️ ${v.note}</div>` : ''}
+        <a href="customer.html?id=${v.id}" style="display:block;margin-top:10px;text-align:center;background:#2c5f2d;color:white;padding:8px;border-radius:7px;font-size:0.85rem;text-decoration:none;font-weight:bold;">📋 查看/编辑客户详情 →</a>
+        <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid white;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);"></div>
+    </div>`;
+
+    marker.on('click', () => {
+        infoWindow.setContent(popupHtml);
+        infoWindow.open(map, marker.getPosition());
+        const si = document.getElementById(`item-${v.id}`);
+        if (si) { if (activeItem) activeItem.classList.remove('active'); si.classList.add('active'); si.scrollIntoView({behavior:'smooth',block:'nearest'}); activeItem = si; }
+    });
+
+    const item = document.createElement('div');
+    item.className = 'village-item';
+    item.id = `item-${v.id}`;
+    item.innerHTML = `
+        <div class="village-num">${v.id}</div>
+        <div class="village-info">
+            <div class="village-name">${v.name} · ${v.customer}</div>
+            <div class="village-desc">${v.floors}层 · ${v.area}㎡</div>
+            <div class="village-desc" style="color:#2c5f2d;">📍 距公司约 ${dist} km</div>
+        </div>`;
+    item.addEventListener('click', () => {
+        map.setZoomAndCenter(16, v.pos);
+        setTimeout(() => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker.getPosition()); }, 500);
+        if (activeItem) activeItem.classList.remove('active');
+        item.classList.add('active'); activeItem = item;
+    });
+    listEl.appendChild(item);
+}
+
+// 初始渲染
+villages.forEach(v => renderVillage(v));
+function updateCount() { document.getElementById('villageCount').textContent = `${villages.length} 个`; }
+updateCount();
+
+// ==========================================
+// 添加客户模态框
+// ==========================================
+function openModal()  { document.getElementById('addModal').classList.add('open'); }
+function closeModal() {
+    document.getElementById('addModal').classList.remove('open');
+    document.getElementById('addForm').reset();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = false;
+    btn.textContent = '📍 保存并标注地图';
+}
+
+document.getElementById('addForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ 正在定位地址...';
+
+    const fd = {
+        customer:     document.getElementById('f_customer').value.trim(),
+        name:         document.getElementById('f_village').value.trim(),
+        floors:       parseInt(document.getElementById('f_floors').value) || 2,
+        area:         parseFloat(document.getElementById('f_area').value) || 0,
+        phone:        document.getElementById('f_phone').value.trim(),
+        contact:      document.getElementById('f_contact').value.trim(),
+        requirements: document.getElementById('f_requirements').value.trim(),
+        note:         document.getElementById('f_note').value.trim(),
+    };
+
+    // 拼接搜索地址
+    const addrKeywords = ['省', '市', '区', '县', '镇', '街', '路', '村', '乡'];
+    const hasFullAddr = addrKeywords.some(k => fd.name.indexOf(k) !== -1 && fd.name.length > 4);
+    // Geocoder 用完整地址，PlaceSearch 用简短地名（POI搜索更容易命中）
+    const geoAddr = hasFullAddr ? fd.name : `河南省周口市沈丘县${fd.name}`;
+    const poiAddr = hasFullAddr ? fd.name : `沈丘县${fd.name}`;
+
+    let geocodeDone = false;
+
+    // 通用完成方法
+    function finalizeAdd(pos, source) {
+        if (geocodeDone) return;
+        geocodeDone = true;
+        clearTimeout(timeoutId);
+        btn.disabled = false;
+        btn.textContent = '📍 保存并标注地图';
+        const newV = { id: getNextId(), pos, materials: initMaterials(), ...fd };
+        villages.push(newV);
+        saveVillages();
+        renderVillage(newV);
+        updateCount();
+        closeModal();
+        map.setZoomAndCenter(16, pos);
+        if (source) console.log('定位成功，来源:', source);
+    }
+
+    // 15秒超时兜底
+    const timeoutId = setTimeout(function() {
+        finalizeAdd([...companyPos], '超时兜底');
+        setTimeout(() => alert(`「${fd.name}」地址定位超时，已暂时标注在公司位置。\n可在客户详情页手动调整坐标。`), 200);
+    }, 15000);
+
+    // 同时发起 Geocoder 和 PlaceSearch，谁先返回有效结果就用谁
+    let geoFailed = false, poiFailed = false;
+
+    // Geocoder 请求
+    const geocoder = new AMap.Geocoder({ city: '周口市' });
+    geocoder.getLocation(geoAddr, function(status, result) {
+        if (geocodeDone) return;
+        if (status === 'complete' && result.geocodes && result.geocodes.length > 0) {
+            const loc = result.geocodes[0].location;
+            finalizeAdd([parseFloat(loc.getLng().toFixed(5)), parseFloat(loc.getLat().toFixed(5))], 'Geocoder');
+        } else {
+            geoFailed = true;
+            if (poiFailed) {
+                finalizeAdd([...companyPos], '均失败');
+                setTimeout(() => alert(`「${fd.name}」未能自动定位，已暂时标注在公司位置。\n可在客户详情页手动调整坐标。`), 200);
+            }
+        }
+    });
+
+    // PlaceSearch 请求（并行）
+    const ps = new AMap.PlaceSearch({ city: '周口市', pageSize: 1 });
+    ps.search(poiAddr, function(status, result) {
+        if (geocodeDone) return;
+        const pois = result && result.poiList && result.poiList.pois;
+        if (status === 'complete' && pois && pois.length > 0) {
+            const loc = pois[0].location;
+            finalizeAdd([parseFloat(loc.getLng().toFixed(5)), parseFloat(loc.getLat().toFixed(5))], 'PlaceSearch');
+        } else {
+            poiFailed = true;
+            if (geoFailed) {
+                finalizeAdd([...companyPos], '均失败');
+                setTimeout(() => alert(`「${fd.name}」未能自动定位，已暂时标注在公司位置。\n可在客户详情页手动调整坐标。`), 200);
+            }
+        }
+    });
+});
+
+// ==========================================
+// 点击地图显示坐标
+// ==========================================
+const coordTip = document.getElementById('coordTip');
+map.on('click', function(e) {
+    const lng = e.lnglat.getLng().toFixed(5), lat = e.lnglat.getLat().toFixed(5);
+    coordTip.style.display = 'block';
+    coordTip.textContent = `点击坐标：${lat}, ${lng}`;
+    setTimeout(() => { coordTip.style.display = 'none'; }, 4000);
+});
+</script>
+</body>
+</html>

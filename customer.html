@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客户详情 - 乡野别居</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f4f6f4; min-height: 100vh; }
+
+        /* 顶部导航 */
+        .header {
+            background: #2c5f2d;
+            color: white;
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
+        .header-title { font-size: 1.1rem; font-weight: bold; letter-spacing: 1px; }
+        .save-status { font-size: 0.8rem; opacity: 0.85; background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 12px; }
+
+        /* 页面内容 */
+        .page-content { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+
+        /* 卡片通用 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background: #f0f7f0;
+            padding: 14px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #2c5f2d;
+            border-bottom: 1px solid #e0eee0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-body { padding: 20px; }
+
+        /* 表单网格 */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .form-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+        .form-grid.full { grid-template-columns: 1fr; }
+        .field-group { display: flex; flex-direction: column; gap: 5px; }
+        .field-group label { font-size: 0.78rem; color: #888; font-weight: 500; }
+        .field-group input, .field-group textarea, .field-group select {
+            padding: 9px 11px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.92rem;
+            outline: none;
+            font-family: inherit;
+            background: #fafafa;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .field-group input:focus, .field-group textarea:focus { border-color: #2c5f2d; background: white; }
+        .field-group textarea { resize: vertical; min-height: 80px; }
+
+        /* 保存按钮 */
+        .save-btn {
+            background: #2c5f2d;
+            color: white;
+            border: none;
+            padding: 11px 28px;
+            border-radius: 8px;
+            font-size: 0.92rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: background 0.2s;
+        }
+        .save-btn:hover { background: #1e4420; }
+
+        /* 材料标签页 */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #e0eee0;
+            padding: 0 20px;
+            background: #f8fdf8;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            padding: 11px 18px;
+            border: none;
+            background: none;
+            font-size: 0.9rem;
+            color: #888;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            white-space: nowrap;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .tab-btn:hover { color: #2c5f2d; }
+        .tab-btn.active { color: #2c5f2d; border-bottom-color: #2c5f2d; font-weight: bold; }
+
+        /* 材料表格 */
+        .mat-panel { display: none; padding: 16px 20px 20px; }
+        .mat-panel.active { display: block; }
+        .mat-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .mat-label { font-size: 0.85rem; color: #888; }
+        .add-row-btn {
+            background: #e8f4e8;
+            color: #2c5f2d;
+            border: 1px solid #c5e3c5;
+            padding: 6px 14px;
+            border-radius: 7px;
+            font-size: 0.83rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .add-row-btn:hover { background: #d0ecd0; }
+
+        /* 记录表格 */
+        .record-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .record-table th {
+            background: #f0f7f0;
+            padding: 9px 10px;
+            text-align: left;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 2px solid #e0eee0;
+        }
+        .record-table td { padding: 6px 6px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        .record-table tr:hover td { background: #fafff8; }
+        .record-table td input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            background: transparent;
+            font-family: inherit;
+            outline: none;
+        }
+        .record-table td input:focus { border-color: #2c5f2d; background: white; }
+        .del-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 4px 6px;
+            border-radius: 5px;
+            transition: background 0.15s;
+        }
+        .del-btn:hover { background: #fdecea; }
+        .empty-tip { text-align: center; color: #bbb; padding: 24px; font-size: 0.88rem; }
+
+        /* 危险区域 */
+        .danger-zone { padding: 16px 20px; background: #fff8f8; border-top: 1px solid #fde8e8; }
+        .danger-btn {
+            background: none;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 8px 18px;
+            border-radius: 7px;
+            font-size: 0.82rem;
+            cursor: pointer;
+        }
+        .danger-btn:hover { background: #fdecea; }
+
+        /* Toast 提示 */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: rgba(44,95,45,0.95);
+            color: white;
+            padding: 10px 22px;
+            border-radius: 24px;
+            font-size: 0.88rem;
+            z-index: 9999;
+            transition: transform 0.3s ease;
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .form-grid.cols3 { grid-template-columns: 1fr 1fr; }
+            .record-table th:nth-child(3), .record-table td:nth-child(3) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="header-left">
+        <a href="map.html" class="back-btn">← 返回地图</a>
+        <span class="header-title" id="pageTitle">客户详情</span>
+    </div>
+    <span class="save-status" id="saveStatus">已保存</span>
+</header>
+
+<div class="page-content" id="pageContent">
+    <div style="text-align:center;padding:60px;color:#aaa;">加载中...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==========================================
+// 数据读写
+// ==========================================
+const STORAGE_KEY = 'fanying_customers_v1';
+
+function loadAll() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; }
+}
+function saveAll(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// 材料类型及默认单位（必须在 initPage 调用之前声明）
+const MATERIALS = ['钢筋', '水泥', '沙子', '砖头', '石子', '混凝土', '机械费'];
+const MAT_UNITS = {
+    '钢筋': '吨',
+    '水泥': '吨',
+    '沙子': '方',
+    '砖头': '块',
+    '石子': '方',
+    '混凝土': '方',
+    '机械费': '元'
+};
+let currentMat = MATERIALS[0];
+
+// 从 URL 获取客户 ID
+const urlId = parseInt(new URLSearchParams(location.search).get('id'));
+let allData = loadAll();
+let customer = allData.find(v => v.id === urlId);
+
+if (!customer) {
+    document.getElementById('pageContent').innerHTML = `
+        <div style="text-align:center;padding:80px 20px;color:#888;">
+            <div style="font-size:3rem;margin-bottom:16px;">😕</div>
+            <div style="font-size:1.1rem;margin-bottom:12px;">未找到该客户信息</div>
+            <a href="map.html" style="color:#2c5f2d;">← 返回地图</a>
+        </div>`;
+} else {
+    initPage();
+}
+
+function save() {
+    allData = loadAll();
+    const idx = allData.findIndex(v => v.id === customer.id);
+    if (idx >= 0) allData[idx] = customer;
+    saveAll(allData);
+    showToast('✅ 已保存');
+    document.getElementById('saveStatus').textContent = '已保存 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// （MATERIALS 和 currentMat 已在上方提前声明）
+
+function initPage() {
+    document.getElementById('pageTitle').textContent = `${customer.name} · ${customer.customer}`;
+    document.title = `${customer.customer} - 客户详情`;
+
+    // 确保材料字段存在
+    if (!customer.materials) customer.materials = {};
+    MATERIALS.forEach(m => { if (!customer.materials[m]) customer.materials[m] = []; });
+
+    document.getElementById('pageContent').innerHTML = buildPageHTML();
+    bindInfoForm();
+    renderMaterialPanel(currentMat);
+}
+
+function buildPageHTML() {
+    const v = customer;
+    return `
+    <!-- 基本信息 -->
+    <div class="card">
+        <div class="card-header">👤 客户基本信息</div>
+        <div class="card-body">
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>客户姓名</label>
+                    <input id="f_customer" value="${esc(v.customer)}">
+                </div>
+                <div class="field-group">
+                    <label>所在村庄</label>
+                    <input id="f_name" value="${esc(v.name)}">
+                </div>
+                <div class="field-group">
+                    <label>楼层数</label>
+                    <input id="f_floors" type="number" min="1" max="20" value="${v.floors||2}">
+                </div>
+                <div class="field-group">
+                    <label>建筑面积（㎡）</label>
+                    <input id="f_area" type="number" step="0.01" value="${v.area||''}">
+                </div>
+            </div>
+            <div class="form-grid" style="margin-top:14px;">
+                <div class="field-group">
+                    <label>负责人</label>
+                    <input id="f_contact" value="${esc(v.contact||'')}">
+                </div>
+                <div class="field-group">
+                    <label>联系电话</label>
+                    <input id="f_phone" type="tel" value="${esc(v.phone||'')}">
+                </div>
+            </div>
+            <div class="form-grid full" style="margin-top:14px;">
+                <div class="field-group">
+                    <label>客户要求</label>
+                    <textarea id="f_requirements">${esc(v.requirements||'')}</textarea>
+                </div>
+                <div class="field-group">
+                    <label>备注</label>
+                    <textarea id="f_note">${esc(v.note||'')}</textarea>
+                </div>
+            </div>
+            <button class="save-btn" onclick="saveInfo()">💾 保存基本信息</button>
+        </div>
+    </div>
+
+    <!-- 材料进场记录 -->
+    <div class="card">
+        <div class="card-header">📦 材料进场记录</div>
+        <div class="tab-bar" id="tabBar">
+            ${MATERIALS.map(m => `<button class="tab-btn ${m===currentMat?'active':''}" onclick="switchMat('${m}')">${m}</button>`).join('')}
+        </div>
+        <div id="matPanelWrap"></div>
+    </div>
+
+    <!-- 危险区域 -->
+    <div class="card">
+        <div class="card-header" style="color:#e74c3c;background:#fff8f8;">⚠️ 危险操作</div>
+        <div class="danger-zone">
+            <button class="danger-btn" onclick="deleteCustomer()">🗑 删除该客户及所有记录</button>
+            <span style="font-size:0.78rem;color:#aaa;margin-left:12px;">此操作不可恢复</span>
+        </div>
+    </div>`;
+}
+
+function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ==========================================
+// 保存基本信息
+// ==========================================
+function saveInfo() {
+    customer.customer     = document.getElementById('f_customer').value.trim();
+    customer.name         = document.getElementById('f_name').value.trim();
+    customer.floors       = parseInt(document.getElementById('f_floors').value) || 2;
+    customer.area         = parseFloat(document.getElementById('f_area').value) || 0;
+    customer.contact      = document.getElementById('f_contact').value.trim();
+    customer.phone        = document.getElementById('f_phone').value.trim();
+    customer.requirements = document.getElementById('f_requirements').value.trim();
+    customer.note         = document.getElementById('f_note').value.trim();
+    save();
+    document.getElementById('pageTitle').textContent = `${customer.name} · ${customer.customer}`;
+    document.title = `${customer.customer} - 客户详情`;
+}
+
+function bindInfoForm() {
+    // 回车保存
+    document.addEventListener('keydown', e => {
+        if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveInfo(); }
+    });
+}
+
+// ==========================================
+// 材料进场记录
+// ==========================================
+function switchMat(mat) {
+    currentMat = mat;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.textContent === mat));
+    renderMaterialPanel(mat);
+}
+
+function renderMaterialPanel(mat) {
+    const records = customer.materials[mat] || [];
+    const wrap = document.getElementById('matPanelWrap');
+    wrap.innerHTML = `
+    <div class="mat-panel active" id="panel_${mat}">
+        <div class="mat-toolbar">
+            <span class="mat-label">共 <b>${records.length}</b> 条记录</span>
+            <button class="add-row-btn" onclick="addRecord('${mat}')">+ 添加记录</button>
+        </div>
+        <table class="record-table">
+            <thead>
+                <tr>
+                    <th style="width:120px;">日期</th>
+                    <th style="width:90px;">数量</th>
+                    <th style="width:70px;">单位</th>
+                    <th style="width:110px;">供应商</th>
+                    <th>备注</th>
+                    <th style="width:40px;"></th>
+                </tr>
+            </thead>
+            <tbody id="tbody_${mat}">
+                ${records.length === 0
+                    ? `<tr><td colspan="6" class="empty-tip">暂无记录，点击"添加记录"开始填写</td></tr>`
+                    : records.map((r,i) => buildRow(mat, r, i)).join('')}
+            </tbody>
+        </table>
+    </div>`;
+}
+
+function buildRow(mat, r, i) {
+    const defaultUnit = MAT_UNITS[mat] || '吨';
+    return `<tr id="row_${mat}_${i}">
+        <td><input type="date" value="${r.date||''}" onchange="updateRecord('${mat}',${i},'date',this.value)" onblur="save()"></td>
+        <td><input type="number" step="0.1" value="${r.qty||''}" placeholder="数量" onchange="updateRecord('${mat}',${i},'qty',this.value)" onblur="save()"></td>
+        <td><input value="${esc(r.unit||defaultUnit)}" placeholder="单位" onchange="updateRecord('${mat}',${i},'unit',this.value)" onblur="save()"></td>
+        <td><input value="${esc(r.supplier||'')}" placeholder="供应商" onchange="updateRecord('${mat}',${i},'supplier',this.value)" onblur="save()"></td>
+        <td><input value="${esc(r.remark||'')}" placeholder="备注" onchange="updateRecord('${mat}',${i},'remark',this.value)" onblur="save()"></td>
+        <td><button class="del-btn" onclick="deleteRecord('${mat}',${i})" title="删除">✕</button></td>
+    </tr>`;
+}
+
+function addRecord(mat) {
+    const today = new Date().toISOString().split('T')[0];
+    const defaultUnit = MAT_UNITS[mat] || '吨';
+    customer.materials[mat].push({ date: today, qty: '', unit: defaultUnit, supplier: '', remark: '' });
+    save();
+    renderMaterialPanel(mat);
+    // 聚焦数量输入
+    const rows = document.querySelectorAll(`#tbody_${mat} tr`);
+    const lastRow = rows[rows.length - 1];
+    if (lastRow) {
+        const inp = lastRow.querySelectorAll('input')[1];
+        if (inp) inp.focus();
+    }
+}
+
+function updateRecord(mat, i, field, val) {
+    if (customer.materials[mat] && customer.materials[mat][i] !== undefined) {
+        customer.materials[mat][i][field] = val;
+    }
+}
+
+function deleteRecord(mat, i) {
+    if (!confirm(`确定删除第 ${i+1} 条 ${mat} 记录？`)) return;
+    customer.materials[mat].splice(i, 1);
+    save();
+    renderMaterialPanel(mat);
+}
+
+// ==========================================
+// 删除客户
+// ==========================================
+function deleteCustomer() {
+    if (!confirm(`确定删除客户「${customer.customer}·${customer.name}」及所有材料记录？\n此操作不可恢复！`)) return;
+    allData = loadAll();
+    const newData = allData.filter(v => v.id !== customer.id);
+    saveAll(newData);
+    location.href = 'map.html';
+}
+</script>
+</body>
+</html>
