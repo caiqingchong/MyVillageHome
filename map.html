@@ -146,6 +146,42 @@
         /* 地图区域 */
         #map { min-height: 400px; }
 
+        /* 状态筛选按钮 */
+        .filter-btns {
+            display: flex;
+            gap: 6px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e0eee0;
+            flex-shrink: 0;
+        }
+        .filter-btn {
+            flex: 1;
+            padding: 7px 4px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.15s;
+            font-weight: bold;
+        }
+        .filter-btn.f-all   { background:#2c5f2d; color:white; border-color:#2c5f2d; }
+        .filter-btn.f-active{ background:#1e6fa8; color:white; border-color:#1e6fa8; }
+        .filter-btn.f-done  { background:#e8820c; color:white; border-color:#e8820c; }
+
+        /* 单个列表项的状态标签 */
+        .status-badge {
+            display:inline-block;
+            padding:1px 6px;
+            border-radius:4px;
+            font-size:0.68rem;
+            font-weight:bold;
+            margin-top:3px;
+        }
+        .status-badge.done   { background:#fff0e0; color:#e8820c; }
+        .status-badge.active { background:#e8f4e8; color:#2c5f2d; }
+
         /* 地图控件 */
         .map-controls {
             position: absolute;
@@ -321,6 +357,12 @@
             客户项目分布
             <span class="village-count" id="villageCount">-- 个</span>
         </div>
+        <!-- 状态筛选按钮 -->
+        <div class="filter-btns">
+            <button class="filter-btn f-all"    id="fbAll"    onclick="setFilter('all')">全部</button>
+            <button class="filter-btn"          id="fbActive" onclick="setFilter('active')">&#x1F6A7; 未完工</button>
+            <button class="filter-btn"          id="fbDone"   onclick="setFilter('done')">&#x2705; 已完工</button>
+        </div>
         <div class="village-list" id="villageList"></div>
         <div class="sidebar-tip">
             💡 点击村名可定位到地图上的位置；标注位置为估算坐标，如需精确调整请联系我们。
@@ -353,7 +395,7 @@
 // • STORAGE_KEY  → 基础客户（版本升级可重置）
 // • USER_KEY      → 手动新增客户（永不清除）
 // ==========================================
-const STORAGE_KEY = 'fanying_customers_v2';
+const STORAGE_KEY = 'fanying_customers_v3';
 const USER_KEY    = 'fanying_user_added';
 
 function initMaterials() {
@@ -361,24 +403,46 @@ function initMaterials() {
 }
 
 const defaultVillages = [
-    { id: 1,  name:"赵寨",    pos:[115.0180,33.4820], customer:"贾建伟",   floors:2, area:226.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id: 2,  name:"和尚庄",  pos:[114.9920,33.4820], customer:"范东林",   floors:2, area:290.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id: 3,  name:"大褚庄",  pos:[115.0250,33.4650], customer:"褚海参",   floors:3, area:157.10,  phone:"", contact:"", requirements:"", note:"合同模板不同，面积在",     materials:initMaterials() },
-    { id: 4,  name:"孙庄",    pos:[115.0080,33.4750], customer:"孙志民",   floors:2, area:161.60,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id: 5,  name:"小褚庄",  pos:[115.0220,33.4600], customer:"褚海岗",   floors:2, area:253.50,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id: 6,  name:"张营",    pos:[114.9850,33.4700], customer:"赵建立",   floors:2, area:232.75,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id: 7,  name:"普花园",  pos:[115.0050,33.4780], customer:"李书祥",   floors:2, area:311.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id: 8,  name:"李省城",  pos:[115.0120,33.4550], customer:"李小辉",   floors:2, area:231.60,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id: 9,  name:"管善庄",  pos:[115.0300,33.4880], customer:"管大伟",   floors:2, area:465.70,  phone:"", contact:"", requirements:"", note:"合同甲方签名为王瑞如",   materials:initMaterials() },
-    { id:10,  name:"蒋营",    pos:[114.9950,33.4580], customer:"孙岭",     floors:2, area:387.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id:11,  name:"褚王庄",  pos:[115.0280,33.4720], customer:"褚清",     floors:2, area:346.51,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id:12,  name:"郭庄",    pos:[115.0350,33.4680], customer:"郭玉合",   floors:2, area:411.00,  phone:"", contact:"", requirements:"", note:"面积辨认有一定难度",       materials:initMaterials() },
-    { id:13,  name:"金庄",    pos:[115.0080,33.4900], customer:"李兵",     floors:2, area:126.47,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id:14,  name:"钱寨",    pos:[115.0050,33.4620], customer:"刘凯",     floors:2, area:270.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id:15,  name:"陈于",    pos:[115.0180,33.4520], customer:"陈洪林",   floors:2, area:153.52,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id:16,  name:"韩营",    pos:[114.9800,33.4850], customer:"韩海岑",   floors:2, area:339.70,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id:17,  name:"马堂",    pos:[115.0150,33.4980], customer:"韩建邦",   floors:2, area:453.87,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() }
+    // ===== 2026年 施工中 =====
+    { id: 1, name:"赵寨",       pos:[115.0180,33.4820], customer:"贾建伟", floors:2, area:226.00,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 2, name:"和尚庄",     pos:[114.9920,33.4820], customer:"范东林", floors:2, area:290.00,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 3, name:"大褚庄",     pos:[115.0250,33.4650], customer:"褚海参", floors:3, area:157.10,  phone:"", contact:"", requirements:"", note:"合同模板不同，面积在",status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 4, name:"孙庄",       pos:[115.0080,33.4750], customer:"孙志民", floors:2, area:161.60,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 5, name:"小褚庄",     pos:[115.0220,33.4600], customer:"褚海岗", floors:2, area:253.50,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 6, name:"张营",       pos:[114.9850,33.4700], customer:"赵建立", floors:2, area:232.75,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 7, name:"普花园",     pos:[115.0050,33.4780], customer:"李书祥", floors:2, area:311.00,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 8, name:"李省城",     pos:[115.0120,33.4550], customer:"李小辉", floors:2, area:231.60,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id: 9, name:"管善庄",     pos:[115.0300,33.4880], customer:"管大伟", floors:2, area:465.70,  phone:"", contact:"", requirements:"", note:"合同甲方签名为王瑞如",status:"active", region:"沈丘", materials:initMaterials() },
+    { id:10, name:"蒋营",       pos:[114.9950,33.4580], customer:"孙岭",   floors:2, area:387.00,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id:11, name:"褚王庄",     pos:[115.0280,33.4720], customer:"褚清",   floors:2, area:346.51,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id:12, name:"郭庄",       pos:[115.0350,33.4680], customer:"郭玉合", floors:2, area:411.00,  phone:"", contact:"", requirements:"", note:"面积辨认有一定难度",status:"active", region:"沈丘", materials:initMaterials() },
+    { id:13, name:"金庄",       pos:[115.0080,33.4900], customer:"李兵",   floors:2, area:126.47,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id:14, name:"钱寨",       pos:[115.0050,33.4620], customer:"刘凯",   floors:2, area:270.00,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id:15, name:"陈于",       pos:[115.0180,33.4520], customer:"陈洪林", floors:2, area:153.52,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id:16, name:"韩营",       pos:[114.9800,33.4850], customer:"韩海岑", floors:2, area:339.70,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    { id:17, name:"马堂",       pos:[115.0150,33.4980], customer:"韩建邦", floors:2, area:453.87,  phone:"", contact:"", requirements:"", note:"",                  status:"active", region:"沈丘", materials:initMaterials() },
+    // ===== 2025年 已完工 =====
+    { id:18, name:"徐营村",     pos:[115.092,33.408],  customer:"卢留宽", floors:2, area:283.00,   phone:"", contact:"", requirements:"", note:"按墙体面积加门厅收方",      status:"done", region:"沈丘", materials:initMaterials() },
+    { id:19, name:"永丰镇阎庄", pos:[114.857,33.388],  customer:"闫本红", floors:2, area:280.544,  phone:"", contact:"", requirements:"", note:"项城永丰二层现代别墅，挑檐面积23.38㎡",   status:"done", region:"项城", materials:initMaterials() },
+    { id:20, name:"胡楼村",     pos:[115.052,33.442],  customer:"胡云庚", floors:1, area:144.80,   phone:"", contact:"", requirements:"", note:"砖混结构条形基础",                status:"done", region:"沈丘", materials:initMaterials() },
+    { id:21, name:"杨湾村",     pos:[115.003,33.483],  customer:"蒋小飞", floors:3, area:260.70,   phone:"", contact:"", requirements:"", note:"三层简约新中式，挑檐面积4.5㎡",        status:"done", region:"沈丘", materials:initMaterials() },
+    { id:22, name:"小刘村",     pos:[115.123,33.443],  customer:"李来顺", floors:2, area:231.10,   phone:"", contact:"", requirements:"", note:"两层别墅，挑檐面积21.28㎡",             status:"done", region:"沈丘", materials:initMaterials() },
+    { id:23, name:"玉帝庙村",   pos:[115.001,33.474],  customer:"李培亚", floors:1, area:180.34,   phone:"", contact:"", requirements:"", note:"砖混一层，地基不低于90公分",           status:"done", region:"沈丘", materials:initMaterials() },
+    { id:24, name:"老李营村",   pos:[114.993,33.477],  customer:"李伟壮", floors:3, area:400.63,   phone:"", contact:"", requirements:"", note:"含旋转楼梯，天沟出檐80公分",           status:"done", region:"沈丘", materials:initMaterials() },
+    { id:25, name:"李集村",     pos:[115.010,33.470],  customer:"李岩",   floors:2, area:360.94,   phone:"", contact:"", requirements:"", note:"二层别墅，檐口出60公分，送防潮层",         status:"done", region:"沈丘", materials:initMaterials() },
+    { id:26, name:"新桥平庄村", pos:[114.862,33.480],  customer:"于常军", floors:1, area:179.00,   phone:"", contact:"", requirements:"", note:"一层别墅，挑檐宽度0.3米",               status:"done", region:"项城", materials:initMaterials() },
+    { id:27, name:"高寺陈村",   pos:[114.858,33.525],  customer:"陈书明", floors:2, area:265.32,   phone:"", contact:"", requirements:"", note:"两层新中式，含花墙新中式门楼",         status:"done", region:"项城", materials:initMaterials() },
+    { id:28, name:"钓鱼台村",   pos:[115.004,33.477],  customer:"李小建", floors:2, area:240.00,   phone:"", contact:"", requirements:"", note:"按墙体面积加门厅收方，挑檐0.5米",      status:"done", region:"沈丘", materials:initMaterials() },
+    { id:29, name:"留福某村",   pos:[115.118,33.441],  customer:"鲁加强", floors:2, area:236.90,   phone:"", contact:"", requirements:"", note:"水电预埋免费，赠送化粪池",             status:"done", region:"沈丘", materials:initMaterials() },
+    { id:30, name:"官会贾庄村", pos:[114.918,33.492],  customer:"马东升", floors:2, area:270.28,   phone:"", contact:"", requirements:"", note:"两层新中式，挑檐面积25.38㎡",           status:"done", region:"项城", materials:initMaterials() },
+    { id:31, name:"郭老庄村",   pos:[114.876,33.488],  customer:"秦威",   floors:2, area:537.90,   phone:"", contact:"", requirements:"", note:"工期90天，要求做天沟防水",             status:"done", region:"项城", materials:initMaterials() },
+    { id:32, name:"孙腰庄(孙)", pos:[114.911,33.502],  customer:"孙俊",   floors:1, area:135.82,   phone:"", contact:"", requirements:"", note:"层高3.9米，带2个老虎窗，包拆老房子",   status:"done", region:"项城", materials:initMaterials() },
+    { id:33, name:"孙腰庄(王)", pos:[114.917,33.500],  customer:"王玉成", floors:2, area:210.84,   phone:"", contact:"", requirements:"", note:"一层高3.5米二层高3.3米，挑檐11.14㎡",     status:"done", region:"项城", materials:initMaterials() },
+    { id:34, name:"南吴营",     pos:[115.090,33.408],  customer:"吴运来", floors:2, area:0,        phone:"", contact:"", requirements:"", note:"一层3.9米二层3.6米，总造价对应约297㎡",  status:"done", region:"沈丘", materials:initMaterials() },
+    { id:35, name:"史庄村",     pos:[115.096,33.414],  customer:"刘金龙", floors:2, area:273.60,   phone:"", contact:"", requirements:"", note:"条形基础琉璃瓦屋顶，工期70天",        status:"done", region:"沈丘", materials:initMaterials() },
+    { id:36, name:"蔡庄村",     pos:[114.905,33.512],  customer:"杨峰",   floors:3, area:317.044,  phone:"", contact:"", requirements:"", note:"阳台防水赠送，工期90天",             status:"done", region:"项城", materials:initMaterials() }
 ];
+
 
 function loadVillages() {
     // 1. 加载基础客户
@@ -392,10 +456,17 @@ function loadVillages() {
                 ['phone','contact','requirements'].forEach(k => { if (v[k] === undefined) v[k] = ''; });
                 Object.keys(initMaterials()).forEach(m => { if (!v.materials[m]) v.materials[m] = []; });
             });
-            // 同步 defaultVillages 里新增的 id
+            // 同步 defaultVillages 新增的 id 及 status/region 字段
+            const defaultMap = {};
+            defaultVillages.forEach(dv => { defaultMap[dv.id] = dv; });
             const existingIds = new Set(baseData.map(v => v.id));
             defaultVillages.forEach(dv => {
                 if (!existingIds.has(dv.id)) baseData.push(JSON.parse(JSON.stringify(dv)));
+            });
+            // 补充缺失的 status / region
+            baseData.forEach(v => {
+                if (!v.status) v.status = defaultMap[v.id]?.status || 'active';
+                if (!v.region) v.region = defaultMap[v.id]?.region || '沈丘';
             });
             baseData.sort((a, b) => a.id - b.id);
         } catch(e) {
@@ -417,12 +488,10 @@ function loadVillages() {
 }
 
 function saveVillages() {
-    // 基础客户写入 STORAGE_KEY（只保留 ID <= 17），手动新增客户写入 USER_KEY
+    // 基础客户写入 STORAGE_KEY，手动新增写入 USER_KEY
     const defaultIds = new Set(defaultVillages.map(v => v.id));
-    const base = villages.filter(v => defaultIds.has(v.id) && v.id <= 17);
-    const userAdd = villages.filter(v => !defaultIds.has(v.id) && v.id <= 17);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
-    localStorage.setItem(USER_KEY, JSON.stringify(userAdd));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(villages.filter(v =>  defaultIds.has(v.id))));
+    localStorage.setItem(USER_KEY,    JSON.stringify(villages.filter(v => !defaultIds.has(v.id))));
 }
 
 function getNextId() {
@@ -467,14 +536,41 @@ function refreshMap() {
 }
 
 // ==========================================
-// 自定义标注（区分沈丘县和其他地区）
+// 状态筛选
 // ==========================================
-function makeMarkerContent(num, name, isShenqiu) {
-    // 沈丘县用绿色，其他地区用蓝色
-    const bgColor = isShenqiu ? '#2c5f2d' : '#1e6fa8';
+let currentFilter = 'all';
+function setFilter(type) {
+    currentFilter = type;
+    document.getElementById('fbAll').className    = 'filter-btn' + (type==='all'    ? ' f-all'    : '');
+    document.getElementById('fbActive').className = 'filter-btn' + (type==='active' ? ' f-active'  : '');
+    document.getElementById('fbDone').className   = 'filter-btn' + (type==='done'   ? ' f-done'   : '');
+    villages.forEach(v => {
+        const show = type === 'all' || v.status === type;
+        const marker = markerMap[v.id];
+        const item   = document.getElementById(`item-${v.id}`);
+        if (marker) marker.setMap(show ? map : null);
+        if (item)   item.style.display = show ? '' : 'none';
+    });
+    updateCount();
+}
+
+// ==========================================
+// 自定义标注（已完工橙色，沈丘未完工绿色，其他未完工蓝色）
+// ==========================================
+function makeMarkerContent(num, name, isShenqiu, status) {
+    let bgColor, rgb;
+    if (status === 'done') {
+        bgColor = '#e8820c'; rgb = '232,130,12';
+    } else if (isShenqiu) {
+        bgColor = '#2c5f2d'; rgb = '44,95,45';
+    } else {
+        bgColor = '#1e6fa8'; rgb = '30,111,168';
+    }
+    const sz = (isShenqiu || status === 'done') ? '30px' : '26px';
+    const fs = (isShenqiu || status === 'done') ? '11px' : '10px';
     return `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-        <div style="width:${isShenqiu ? '30px' : '26px'};height:${isShenqiu ? '30px' : '26px'};background:${bgColor};color:white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid white;flex-shrink:0;"><span style="transform:rotate(45deg);font-size:${isShenqiu ? '11px' : '10px'};font-weight:bold;">${num}</span></div>
-        <div style="margin-top:4px;background:rgba(${isShenqiu ? '44,95,45' : '30,111,168'},0.9);color:white;font-size:11px;font-weight:bold;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);">${name}</div>
+        <div style="width:${sz};height:${sz};background:${bgColor};color:white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid white;flex-shrink:0;"><span style="transform:rotate(45deg);font-size:${fs};font-weight:bold;">${num}</span></div>
+        <div style="margin-top:4px;background:rgba(${rgb},0.9);color:white;font-size:11px;font-weight:bold;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);">${name}</div>
     </div>`;
 }
 
@@ -513,19 +609,25 @@ const listEl = document.getElementById('villageList');
 let activeItem = null;
 
 function renderVillage(v) {
-    const isShenqiu = v.name && (v.name.indexOf('沈丘') !== -1 || ['赵寨', '和尚庄', '大褚庄', '孙庄', '小褚庄', '张营', '普花园', '李省城', '管善庄', '蒋营', '褚王庄', '郭庄', '金庄', '钱寨', '陈于', '韩营', '马堂', '付井镇'].some(n => v.name.includes(n)));
+    const isShenqiu = v.region === '沈丘';
+    const status = v.status || 'active';
     const marker = new AMap.Marker({
         position: new AMap.LngLat(v.pos[0], v.pos[1]),
-        content: makeMarkerContent(v.id, v.name, isShenqiu),
+        content: makeMarkerContent(v.id, v.name, isShenqiu, status),
         offset: new AMap.Pixel(-30, -58)
     });
-    marker.setMap(map);
+    // 应用当前筛选状态
+    if (currentFilter !== 'all' && status !== currentFilter) {
+        marker.setMap(null);
+    } else {
+        marker.setMap(map);
+    }
     markerMap[v.id] = marker;
 
     const dist = calcDist(v.pos, companyPos);
     const popupHtml = `<div style="background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:14px 16px;min-width:195px;font-family:-apple-system,'PingFang SC',sans-serif;position:relative;">
         <div onclick="closeInfo()" style="position:absolute;top:8px;right:10px;cursor:pointer;color:#aaa;font-size:15px;">&#x2715;</div>
-        <div style="font-size:1rem;font-weight:bold;color:#1a3a1a;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #e0eee0;">📍 ${v.name}</div>
+        <div style="font-size:1rem;font-weight:bold;color:#1a3a1a;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #e0eee0;">📍 ${v.name} ${status==='done'?'<span style="background:#fff0e0;color:#e8820c;font-size:0.72rem;padding:1px 6px;border-radius:4px;margin-left:4px;">已完工</span>':'<span style="background:#e8f4e8;color:#2c5f2d;font-size:0.72rem;padding:1px 6px;border-radius:4px;margin-left:4px;">施工中</span>'}</div>
         <div style="font-size:0.82rem;color:#555;line-height:1.9;">客户：<b>${v.customer}</b></div>
         <div style="font-size:0.82rem;color:#555;line-height:1.9;">楼层：<b>${v.floors}层</b> &nbsp; 面积：<b>${v.area}㎡</b></div>
         <div style="font-size:0.82rem;color:#555;line-height:1.9;">距公司：<b style="color:#2c5f2d;">约 ${dist} km</b></div>
@@ -544,13 +646,21 @@ function renderVillage(v) {
     const item = document.createElement('div');
     item.className = 'village-item';
     item.id = `item-${v.id}`;
+    const badgeClass = status === 'done' ? 'done' : 'active';
+    const badgeText  = status === 'done' ? '✅ 2025已完工' : '🚧 2026施工中';
+    const numColor   = status === 'done' ? '#e8820c' : (isShenqiu ? '#2c5f2d' : '#1e6fa8');
     item.innerHTML = `
-        <div class="village-num">${v.id}</div>
+        <div class="village-num" style="background:${numColor}">${v.id}</div>
         <div class="village-info">
             <div class="village-name">${v.name} · ${v.customer}</div>
-            <div class="village-desc">${v.floors}层 · ${v.area}㎡</div>
-            <div class="village-desc" style="color:#2c5f2d;">📍 距公司约 ${dist} km</div>
+            <div class="village-desc">${v.floors}层 · ${v.area > 0 ? v.area + '㎡' : '面积待定'}</div>
+            <div class="village-desc" style="color:#888;">📍 距公司约 ${dist} km</div>
+            <div class="status-badge ${badgeClass}">${badgeText}</div>
         </div>`;
+    // 应用筛选
+    if (currentFilter !== 'all' && status !== currentFilter) {
+        item.style.display = 'none';
+    }
     item.addEventListener('click', () => {
         map.setZoomAndCenter(16, v.pos);
         setTimeout(() => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker.getPosition()); }, 500);
@@ -562,7 +672,11 @@ function renderVillage(v) {
 
 // 初始渲染
 villages.forEach(v => renderVillage(v));
-function updateCount() { document.getElementById('villageCount').textContent = `${villages.length} 个`; }
+function updateCount() {
+    const visible = currentFilter === 'all' ? villages.length
+        : villages.filter(v => v.status === currentFilter).length;
+    document.getElementById('villageCount').textContent = `${visible} 个`;
+}
 updateCount();
 
 // 页面重新获得焦点时（从 customer.html 返回），强制刷新数据和列表

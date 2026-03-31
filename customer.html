@@ -276,7 +276,7 @@
 // ==========================================
 // 数据读写（与 map.html 双键存储保持一致）
 // ==========================================
-const STORAGE_KEY = 'fanying_customers_v2';
+const STORAGE_KEY = 'fanying_customers_v3';
 const USER_KEY    = 'fanying_user_added';
 
 function loadAll() {
@@ -293,7 +293,7 @@ function loadAll() {
 function saveAll(data) {
     // 同步写回双键：defaultVillages 范围内的 id（小于等于 18）写 STORAGE_KEY，其余写 USER_KEY
     // 为简单，这里用 id 判断： id <= 18 属于基础，> 18 属于用户新增
-    const DEFAULT_MAX_ID = 18;
+    const DEFAULT_MAX_ID = 36;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data.filter(v => v.id <= DEFAULT_MAX_ID)));
     localStorage.setItem(USER_KEY,    JSON.stringify(data.filter(v => v.id >  DEFAULT_MAX_ID)));
 }
