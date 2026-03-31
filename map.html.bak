@@ -377,7 +377,8 @@ const defaultVillages = [
     { id:14,  name:"钱寨",    pos:[115.0050,33.4620], customer:"刘凯",     floors:2, area:270.00,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
     { id:15,  name:"陈于",    pos:[115.0180,33.4520], customer:"陈洪林",   floors:2, area:153.52,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
     { id:16,  name:"韩营",    pos:[114.9800,33.4850], customer:"韩海岑",   floors:2, area:339.70,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
-    { id:17,  name:"马堂",    pos:[115.0150,33.4980], customer:"韩建邦",   floors:2, area:453.87,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() }
+    { id:17,  name:"马堂",    pos:[115.0150,33.4980], customer:"韩建邦",   floors:2, area:453.87,  phone:"", contact:"", requirements:"", note:"",                      materials:initMaterials() },
+    { id:18,  name:"付井镇玉帝庙村", pos:[115.0680,33.4620], customer:"范长发", floors:2, area:290.00, phone:"", contact:"", requirements:"", note:"",        materials:initMaterials() }
 ];
 
 function loadVillages() {
@@ -417,12 +418,10 @@ function loadVillages() {
 }
 
 function saveVillages() {
-    // 基础客户写入 STORAGE_KEY（只保留 ID <= 17），手动新增客户写入 USER_KEY
+    // 基础客户写入 STORAGE_KEY，手动新增客户写入 USER_KEY
     const defaultIds = new Set(defaultVillages.map(v => v.id));
-    const base = villages.filter(v => defaultIds.has(v.id) && v.id <= 17);
-    const userAdd = villages.filter(v => !defaultIds.has(v.id) && v.id <= 17);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
-    localStorage.setItem(USER_KEY, JSON.stringify(userAdd));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(villages.filter(v =>  defaultIds.has(v.id))));
+    localStorage.setItem(USER_KEY,    JSON.stringify(villages.filter(v => !defaultIds.has(v.id))));
 }
 
 function getNextId() {
@@ -435,11 +434,11 @@ let villages = loadVillages();
 // 初始化高德地图
 // ==========================================
 const map = new AMap.Map('map', {
-    zoom: 12,
-    center: [115.08, 33.46], // 沈丘县中心
+    zoom: 10,
+    center: [114.95, 33.50], // 周口市范围中心
     resizeEnable: true
 });
-map.addControl(new AMap.Scale({ unit: 'metric', showButton: false }));
+map.addControl(new AMap.Scale());
 map.addControl(new AMap.ToolBar({ position: 'RT' }));
 
 function switchLayer(type) {
@@ -453,7 +452,7 @@ function switchLayer(type) {
         document.getElementById('btnStreet').classList.remove('active');
     }
 }
-function locateAll() { map.setZoomAndCenter(12, [115.08, 33.46]); }
+function locateAll() { map.setZoomAndCenter(10, [114.95, 33.50]); }
 
 // 手动刷新地图标注
 function refreshMap() {
@@ -583,6 +582,208 @@ window.addEventListener('focus', function() {
     console.log('🔄 页面 focus，已刷新', villages.length, '个客户');
 });
 
+// ==========================================
+// 添加客户模态框
+// ==========================================
+function openModal()  { document.getElementById('addModal').classList.add('open'); }
+function closeModal() {
+    document.getElementById('addModal').classList.remove('open');
+    document.getElementById('addForm').reset();
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('searchResults').innerHTML = '';
+    clearSelectedPos();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = false;
+    btn.textContent = '📍 保存并标注地图';
+}
+
+// 搜索村庄位置（多策略并行搜索）
+function searchVillage() {
+    const keyword = document.getElementById('f_village').value.trim();
+    if (!keyword) {
+        showToast('请先输入村庄名称');
+        document.getElementById('f_village').focus();
+        return;
+    }
+    const resultsBox = document.getElementById('searchResults');
+    resultsBox.innerHTML = '<div style="padding:12px;color:#888;text-align:center;">⚙ 搜索中...</div>';
+    resultsBox.style.display = 'block';
+
+    const allResults = [];
+    let completed = 0;
+    const totalSearches = 4;
+
+    function renderResults() {
+        completed++;
+        if (completed < totalSearches) return; // 等待所有搜索完成
+        
+        // 去重（按名称+坐标）
+        const seen = new Set();
+        const unique = allResults.filter(p => {
+            const key = `${p.name}_${p.lng.toFixed(4)}_${p.lat.toFixed(4)}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        if (unique.length > 0) {
+            resultsBox.innerHTML = unique.slice(0, 10).map(p => `
+                <div onclick="selectSearchResult(${p.lng}, ${p.lat}, '​${p.name.replace(/'/g, "\\'")}')"
+                     style="padding:10px 12px;border-bottom:1px solid #eee;cursor:pointer;transition:background 0.15s;"
+                     onmouseover="this.style.background='#f5fff5'" onmouseout="this.style.background='white'">
+                    <div style="font-size:0.88rem;color:#333;">📍 ${p.name}</div>
+                    <div style="font-size:0.75rem;color:#888;margin-top:3px;">${p.address}</div>
+                </div>
+            `).join('');
+        } else {
+            // 搜索失败，提供手动输入入口
+            resultsBox.innerHTML = `<div style="padding:16px;text-align:center;">
+                <div style="color:#999;">😞 未找到「${keyword}」</div>
+                <div style="font-size:0.78rem;color:#888;margin-top:8px;">试试搜索上级地名，如：付井镇、范营乡</div>
+                <div style="margin-top:12px;padding-top:12px;border-top:1px dashed #ddd;">
+                    <div style="font-size:0.82rem;color:#666;margin-bottom:8px;">或手动输入坐标：</div>
+                    <div style="display:flex;gap:6px;">
+                        <input id="manual_lng" type="number" step="0.0001" placeholder="经度 lng" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.82rem;">
+                        <input id="manual_lat" type="number" step="0.0001" placeholder="纬度 lat" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.82rem;">
+                        <button type="button" onclick="applyManualCoords()" style="padding:6px 12px;background:#2c5f2d;color:white;border:none;border-radius:4px;font-size:0.82rem;cursor:pointer;">确定</button>
+                    </div>
+                    <div style="font-size:0.72rem;color:#aaa;margin-top:6px;">可从高德/百度地图复制坐标</div>
+                </div>
+            </div>`;
+        }
+    }
+
+    function addResults(pois, source) {
+        pois.forEach(p => {
+            allResults.push({
+                name: p.name,
+                lng: parseFloat(p.location.getLng()),
+                lat: parseFloat(p.location.getLat()),
+                address: p.address || (p.pname + p.cityname + p.adname) || source
+            });
+        });
+        renderResults();
+    }
+
+    // 策略1：原始关键词 + 沈丘县
+    const ps1 = new AMap.PlaceSearch({ city: '周口市', pageSize: 5 });
+    ps1.search(`沈丘县${keyword}`, (s, r) => {
+        if (s === 'complete' && r.poiList?.pois?.length) addResults(r.poiList.pois, '沈丘县');
+        else renderResults();
+    });
+
+    // 策略2：去掉“村”字搜索（如 "玉帝庙" 而不是 "玉帝庙村"）
+    const shortKeyword = keyword.replace(/村$/, '');
+    const ps2 = new AMap.PlaceSearch({ city: '周口市', pageSize: 5 });
+    ps2.search(`沈丘县${shortKeyword}`, (s, r) => {
+        if (s === 'complete' && r.poiList?.pois?.length) addResults(r.poiList.pois, '沈丘县');
+        else renderResults();
+    });
+
+    // 策略3：搜索镇级（如 "付井镇"）
+    const townMatch = keyword.match(/(.+镇)/);
+    if (townMatch) {
+        const ps3 = new AMap.PlaceSearch({ city: '周口市', pageSize: 3 });
+        ps3.search(`沈丘县${townMatch[1]}`, (s, r) => {
+            if (s === 'complete' && r.poiList?.pois?.length) addResults(r.poiList.pois, '镇级');
+            else renderResults();
+        });
+    } else {
+        renderResults(); // 没有镇名，跳过
+    }
+
+    // 策略4：使用 Geocoder 地理编码
+    const geocoder = new AMap.Geocoder({ city: '周口市' });
+    geocoder.getLocation(`河南省周口市沈丘县${keyword}`, (s, r) => {
+        if (s === 'complete' && r.geocodes?.length) {
+            r.geocodes.forEach(g => {
+                allResults.push({
+                    name: g.formattedAddress || keyword,
+                    lng: parseFloat(g.location.getLng()),
+                    lat: parseFloat(g.location.getLat()),
+                    address: '地理编码结果'
+                });
+            });
+        }
+        renderResults();
+    });
+}
+
+// 手动输入坐标
+function applyManualCoords() {
+    const lng = parseFloat(document.getElementById('manual_lng').value);
+    const lat = parseFloat(document.getElementById('manual_lat').value);
+    if (isNaN(lng) || isNaN(lat)) {
+        showToast('请输入有效的经纬度');
+        return;
+    }
+    const villageName = document.getElementById('f_village').value.trim() || '自定义位置';
+    selectSearchResult(lng, lat, villageName);
+}
+
+// 选择搜索结果
+function selectSearchResult(lng, lat, name) {
+    document.getElementById('f_lng').value = lng.toFixed(5);
+    document.getElementById('f_lat').value = lat.toFixed(5);
+    document.getElementById('selectedPosText').textContent = name.replace('​', '');
+    document.getElementById('selectedCoords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('selectedPosBox').style.display = 'block';
+    document.getElementById('searchResults').style.display = 'none';
+    // 地图预览位置
+    map.setZoomAndCenter(15, [lng, lat]);
+    showToast(`✅ 已选择：${name.replace('​', '')}`);
+}
+
+// 清除已选位置
+function clearSelectedPos() {
+    document.getElementById('f_lng').value = '';
+    document.getElementById('f_lat').value = '';
+    document.getElementById('selectedPosBox').style.display = 'none';
+}
+
+document.getElementById('addForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ 保存中...';
+
+    const fd = {
+        customer:     document.getElementById('f_customer').value.trim(),
+        name:         document.getElementById('f_village').value.trim(),
+        floors:       parseInt(document.getElementById('f_floors').value) || 2,
+        area:         parseFloat(document.getElementById('f_area').value) || 0,
+        phone:        document.getElementById('f_phone').value.trim(),
+        contact:      document.getElementById('f_contact').value.trim(),
+        requirements: document.getElementById('f_requirements').value.trim(),
+        note:         document.getElementById('f_note').value.trim(),
+    };
+
+    // 判断是否手动选点了坐标
+    const manualLng = parseFloat(document.getElementById('f_lng').value);
+    const manualLat = parseFloat(document.getElementById('f_lat').value);
+    const hasManualPos = !isNaN(manualLng) && !isNaN(manualLat);
+
+    const pos = hasManualPos ? [manualLng, manualLat] : [...companyPos];
+    const newV = { id: getNextId(), pos, materials: initMaterials(), ...fd };
+    villages.push(newV);
+    saveVillages();
+    renderVillage(newV);
+    updateCount();
+    closeModal();
+    map.setZoomAndCenter(15, pos);
+
+    if (hasManualPos) {
+        showToast(`✅ 客户「${fd.name}」已添加并定位`);
+    } else {
+        // 没有手动选点，尝试自动地理编码
+        const addrKeywords = ['省', '市', '区', '县', '镇', '街', '路', '村', '乡'];
+        const hasFullAddr = addrKeywords.some(k => fd.name.indexOf(k) !== -1 && fd.name.length > 4);
+        const geoAddr = hasFullAddr ? fd.name : `河南省周口市沈丘县${fd.name}`;
+        const poiAddr = hasFullAddr ? fd.name : `沈丘县${fd.name}`;
+        showToast('✅ 客户已添加，正在尝试自动定位...');
+        tryGeocodeInBackground(newV, geoAddr, poiAddr);
+    }
+});
 
 // Toast 提示
 function showToast(msg) {
