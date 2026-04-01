@@ -647,6 +647,11 @@ function renderVillage(v) {
         <div style="font-size:0.82rem;color:#555;line-height:1.9;">距公司：<b style="color:#2c5f2d;">约 ${dist} km</b></div>
         ${v.note ? `<div style="font-size:0.78rem;color:#d35400;margin-top:4px;padding:4px 6px;background:#fff3e0;border-radius:4px;">⚠️ ${v.note}</div>` : ''}
         <a href="customer.html?id=${v.id}" style="display:block;margin-top:10px;text-align:center;background:#2c5f2d;color:white;padding:8px;border-radius:7px;font-size:0.85rem;text-decoration:none;font-weight:bold;">📋 查看/编辑客户详情 →</a>
+        <div style="display:flex;gap:6px;margin-top:7px;">
+            <a href="https://uri.amap.com/marker?position=${v.pos[0]},${v.pos[1]}&name=${encodeURIComponent(v.name+'·'+v.customer)}" target="_blank" style="flex:1;display:block;text-align:center;background:#f0f7ff;color:#1565c0;padding:7px 4px;border-radius:7px;font-size:0.78rem;text-decoration:none;border:1px solid #bbdefb;">📍 高德地图</a>
+            <button onclick="copyLocation(${v.id})" style="flex:1;background:#f5f5f5;color:#444;padding:7px 4px;border-radius:7px;font-size:0.78rem;border:1px solid #ddd;cursor:pointer;">📋 复制位置</button>
+            <button onclick="shareLocation(${v.id})" id="shareBtn-${v.id}" style="flex:1;background:#f0fff4;color:#2c5f2d;padding:7px 4px;border-radius:7px;font-size:0.78rem;border:1px solid #c8e6c9;cursor:pointer;">📤 分享</button>
+        </div>
         <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid white;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);"></div>
     </div>`;
 
@@ -682,6 +687,53 @@ function renderVillage(v) {
         item.classList.add('active'); activeItem = item;
     });
     listEl.appendChild(item);
+}
+
+// ==========================================
+// 分享 & 复制位置功能
+// ==========================================
+function getShareText(id) {
+    const v = villages.find(x => x.id === id);
+    if (!v) return '';
+    const statusLabel = v.status === 'done' ? '2025年已完工' : '2026年施工中';
+    const mapUrl = `https://uri.amap.com/marker?position=${v.pos[0]},${v.pos[1]}&name=${encodeURIComponent(v.name+'·'+v.customer)}`;
+    return `【范营大包建房 · 施工地址】\n客户：${v.customer}\n地址：${v.name}（${v.region}）\n状态：${statusLabel}\n坐标：${v.pos[1]}, ${v.pos[0]}\n高德地图：${mapUrl}`;
+}
+
+function copyLocation(id) {
+    const text = getShareText(id);
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        // 临时改按钮文字提示成功
+        const btns = document.querySelectorAll(`[onclick="copyLocation(${id})"]`);
+        btns.forEach(b => { const old = b.textContent; b.textContent = '✅ 已复制'; b.style.background='#e8f5e9'; setTimeout(()=>{ b.textContent=old; b.style.background=''; },1800); });
+    }).catch(() => {
+        // 降级方案
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('已复制到剪贴板！');
+    });
+}
+
+function shareLocation(id) {
+    const v = villages.find(x => x.id === id);
+    if (!v) return;
+    const mapUrl = `https://uri.amap.com/marker?position=${v.pos[0]},${v.pos[1]}&name=${encodeURIComponent(v.name+'·'+v.customer)}`;
+    const shareData = {
+        title: `${v.name} · ${v.customer} - 范营大包建房`,
+        text: getShareText(id),
+        url: mapUrl
+    };
+    if (navigator.share) {
+        navigator.share(shareData).catch(() => {});
+    } else {
+        // 桌面端降级为复制
+        copyLocation(id);
+    }
 }
 
 // 初始渲染
