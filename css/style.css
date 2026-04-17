@@ -718,6 +718,63 @@ section {
     letter-spacing: 1px;
 }
 
+/* 首席设计师联系方式 */
+.designer-contact {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.15);
+    text-align: center;
+}
+
+.contact-title {
+    font-size: 1.3rem;
+    color: #c9a96e;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.contact-subtitle {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 1.5rem;
+}
+
+.contact-cards {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.contact-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.3s, background 0.3s;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.contact-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.contact-card img {
+    width: 160px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: block;
+    margin-bottom: 0.8rem;
+}
+
+.contact-label {
+    display: block;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
 /* 页脚 */
 .footer {
     background: #2c3e50;
