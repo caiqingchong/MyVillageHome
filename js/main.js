@@ -159,4 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         document.body.style.opacity = '1';
     }, 100);
+
+    // 页面加载动画（无需额外初始化，banner 现为静态背景图）
 });
+
