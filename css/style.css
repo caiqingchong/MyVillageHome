@@ -6,128 +6,51 @@
 }
 
 /* ========================================
-   图片渐进式加载优化：模糊占位 → 高清显示
+   图片加载优化：简单渐显效果
    ======================================== */
 
-/* 图片占位容器 */
-.img-wrapper {
-    position: relative;
-    background: linear-gradient(135deg, #e8e4df 0%, #d4cfc8 100%);
-    overflow: hidden;
-}
-
-/* 图片默认模糊占位状态 */
-.img-wrapper img {
+/* 图片默认隐藏，加载完成后渐显 */
+img {
     opacity: 0;
-    filter: blur(20px);
-    transform: scale(1.1);
-    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
+    transition: opacity 0.4s ease;
 }
 
-/* 图片加载完成：移除模糊，清晰显示 */
-.img-wrapper img.loaded {
+img.loaded {
     opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
 }
 
-/* 画廊图片容器 */
+/* Hero 背景图立即显示 */
+.hero-bg-img {
+    opacity: 1 !important;
+}
+
+/* 画廊图片悬停效果 */
 .gallery-item {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
-}
-
-/* 画廊图片模糊加载 */
-.gallery-item img {
-    opacity: 0;
-    filter: blur(15px);
-    transform: scale(1.1);
-    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
-}
-
-.gallery-item img.loaded {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
 }
 
 .gallery-item:hover img.loaded {
     transform: scale(1.05);
 }
 
-/* 设施图片容器 */
-.facility-img-wrap {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, #f5f0eb 0%, #ebe5df 100%);
-}
-
-.facility-img-wrap img {
-    opacity: 0;
-    filter: blur(15px);
-    transform: scale(1.1);
-    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.3s ease;
-}
-
+/* 设施图片悬停效果 */
 .facility-img-wrap img.loaded {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
+    transition: opacity 0.4s ease, transform 0.3s ease;
 }
 
 .facility-img-wrap:hover img.loaded {
     transform: scale(1.05);
 }
 
-/* 轮播图片 */
-.slide {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
-}
-
-.slide img {
-    opacity: 0;
-    filter: blur(10px);
-    transform: scale(1.05);
-    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
-}
-
-.slide img.loaded {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
-}
-
-/* 联系卡片图片 */
-.contact-card {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, #e8e4df 0%, #d4cfc8 100%);
-}
-
-.contact-card img {
-    opacity: 0;
-    filter: blur(10px);
-    transform: scale(1.1);
-    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.3s ease;
-}
-
+/* 联系卡片悬停效果 */
 .contact-card img.loaded {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
+    transition: opacity 0.4s ease, transform 0.3s ease;
 }
 
 .contact-card:hover img.loaded {
     transform: scale(1.03);
 }
-
-/* Hero 背景图特殊处理 */
-.hero-bg-img {
-    opacity: 1 !important;
-    filter: none !important;
     transform: none !important;
 }
 

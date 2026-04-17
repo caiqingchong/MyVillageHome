@@ -134,51 +134,21 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// 图片懒加载（可选优化）
-const lazyImages = document.querySelectorAll('img[data-src]');
-if (lazyImages.length > 0) {
-    const imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                img.src = img.dataset.src;
-                img.removeAttribute('data-src');
-                observer.unobserve(img);
-            }
-        });
-    });
-    
-    lazyImages.forEach(img => imageObserver.observe(img));
-}
-
-// 图片渐进式加载完成处理
+// 图片加载完成处理
 document.addEventListener('DOMContentLoaded', () => {
     const images = document.querySelectorAll('img');
     
     images.forEach(img => {
-        // 如果图片已经在缓存中加载完成
         if (img.complete) {
             img.classList.add('loaded');
         } else {
-            // 监听图片加载完成事件
             img.addEventListener('load', function() {
                 this.classList.add('loaded');
             });
-            
-            // 图片加载失败时也移除占位效果
             img.addEventListener('error', function() {
                 this.classList.add('loaded');
-                console.log('图片加载失败:', this.src);
             });
         }
     });
-    
-    // 添加页面加载动画
-    document.body.style.opacity = '0';
-    document.body.style.transition = 'opacity 0.5s ease';
-    setTimeout(() => {
-        document.body.style.opacity = '1';
-    },     100);
 });
-
 
