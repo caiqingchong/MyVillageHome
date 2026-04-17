@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>项目分布地图 - 乡野别居</title>
-    <script src="https://webapi.amap.com/maps?v=2.0&key=c7db209c07ba96a8fc0819bb3e38e0f3&plugin=AMap.Scale,AMap.ToolBar,AMap.Geocoder,AMap.PlaceSearch"></script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=c7db209c07ba96a8fc0819bb3e38e0f3&plugin=AMap.Scale,AMap.ToolBar,AMap.Geocoder,AMap.PlaceSearch&callback=initAMap"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -391,6 +391,11 @@
 
 <script>
 // ==========================================
+// 全局变量
+// ==========================================
+let map;  // 高德地图实例
+
+// ==========================================
 // localStorage 数据管理
 // • STORAGE_KEY  → 基础客户（版本升级可重置）
 // • USER_KEY      → 手动新增客户（永不清除）
@@ -515,38 +520,61 @@ function getNextId() {
 let villages = loadVillages();
 
 // ==========================================
-// 初始化高德地图
+// 初始化高德地图（由 API callback 自动调用）
 // ==========================================
-const map = new AMap.Map('map', {
-    zoom: 12,
-    center: [115.08, 33.46], // 沈丘县中心
-    resizeEnable: true
-});
-map.addControl(new AMap.Scale({ unit: 'metric', showButton: false }));
-map.addControl(new AMap.ToolBar({ position: 'RT' }));
+function initAMap() {
+    // 初始化高德地图
+    map = new AMap.Map('map', {
+        zoom: 12,
+        center: [115.08, 33.46], // 沈丘县中心
+        resizeEnable: true
+    });
+    map.addControl(new AMap.Scale({ unit: 'metric', showButton: false }));
+    map.addControl(new AMap.ToolBar({ position: 'RT' }));
 
-function switchLayer(type) {
-    if (type === 'street') {
-        map.setLayers([new AMap.TileLayer()]);
-        document.getElementById('btnStreet').classList.add('active');
-        document.getElementById('btnSatellite').classList.remove('active');
-    } else {
-        map.setLayers([new AMap.TileLayer.Satellite(), new AMap.TileLayer.RoadNet()]);
-        document.getElementById('btnSatellite').classList.add('active');
-        document.getElementById('btnStreet').classList.remove('active');
-    }
-}
-function locateAll() { map.setZoomAndCenter(12, [115.08, 33.46]); }
-
-// 手动刷新地图标注
-function refreshMap() {
-    villages = loadVillages();
-    Object.values(markerMap).forEach(m => { try { m.setMap(null); } catch(e) {} });
-    for (let k in markerMap) delete markerMap[k];
-    listEl.innerHTML = '';
+    // 渲染所有标注
     villages.forEach(v => renderVillage(v));
     updateCount();
-    showToast(`✅ 已刷新 ${villages.length} 个客户标注`);
+
+    // 渲染公司标注
+    const companyPopupHtml = `<div style="background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:14px 16px;min-width:200px;font-family:-apple-system,'PingFang SC',sans-serif;position:relative;"><div onclick="closeInfo()" style="position:absolute;top:8px;right:10px;cursor:pointer;color:#aaa;font-size:15px;">&#x2715;</div><div style="font-size:1rem;font-weight:bold;color:#c0392b;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #fde8e8;">&#9733; 范营大包建房公司</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">地址：沈丘县范营乡村委西50米</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">电话：13522120000</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">时间：8:00～20:00</div><div style="margin-top:6px;"><span style="background:#fdecea;color:#c0392b;padding:2px 9px;border-radius:4px;font-size:0.75rem;">公司总部</span></div><div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid white;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);"></div></div>`;
+    const companyMarker = new AMap.Marker({
+        position: new AMap.LngLat(companyPos[0], companyPos[1]),
+        content: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;"><div style="width:42px;height:42px;background:radial-gradient(circle,#e74c3c,#c0392b);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(192,57,43,0.55);border:3px solid white;font-size:22px;line-height:1;">&#9733;</div><div style="margin-top:5px;background:rgba(192,57,43,0.92);color:white;font-size:11px;font-weight:bold;padding:3px 8px;border-radius:10px;white-space:nowrap;">范营大包建房公司</div></div>`,
+        offset: new AMap.Pixel(-40, -60),
+        zIndex: 200
+    });
+    companyMarker.setMap(map);
+    companyMarker.on('click', () => { infoWindow.setContent(companyPopupHtml); infoWindow.open(map, companyMarker.getPosition()); });
+
+    // 页面重新获得焦点时（从 customer.html 返回），强制刷新数据和列表
+    window.addEventListener('focus', function() {
+        // 总是重新加载最新数据（不做比较，避免浮点精度问题）
+        const fresh = loadVillages();
+        villages = fresh;
+        // 清除旧标注
+        Object.values(markerMap).forEach(m => {
+            try { m.setMap(null); } catch(e) {}
+        });
+        for (let k in markerMap) delete markerMap[k];
+        // 清除旧列表
+        listEl.innerHTML = '';
+        // 重新渲染
+        villages.forEach(v => renderVillage(v));
+        updateCount();
+        console.log('🔄 页面 focus，已刷新', villages.length, '个客户');
+
+        // 强制触发地图 resize，防止从 BFCache 返回后地图空白
+        setTimeout(() => { map.resize(); }, 100);
+    });
+
+    // 同时监听 visibilitychange，处理标签页切换场景
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            // 页面变为可见时，延迟触发地图 resize
+            setTimeout(() => { map.resize(); }, 100);
+        }
+    });
 }
 
 // ==========================================
@@ -602,18 +630,9 @@ function calcDist(pos1, pos2) {
 }
 
 // ==========================================
-// 公司总部标注（红星）
+// 公司总部标注（红星）- 在 initAMap 中定义
 // ==========================================
 const companyPos = [115.0020, 33.4730];
-const companyMarker = new AMap.Marker({
-    position: new AMap.LngLat(companyPos[0], companyPos[1]),
-    content: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;"><div style="width:42px;height:42px;background:radial-gradient(circle,#e74c3c,#c0392b);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(192,57,43,0.55);border:3px solid white;font-size:22px;line-height:1;">&#9733;</div><div style="margin-top:5px;background:rgba(192,57,43,0.92);color:white;font-size:11px;font-weight:bold;padding:3px 8px;border-radius:10px;white-space:nowrap;">范营大包建房公司</div></div>`,
-    offset: new AMap.Pixel(-40, -60),
-    zIndex: 200
-});
-companyMarker.setMap(map);
-const companyPopupHtml = `<div style="background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:14px 16px;min-width:200px;font-family:-apple-system,'PingFang SC',sans-serif;position:relative;"><div onclick="closeInfo()" style="position:absolute;top:8px;right:10px;cursor:pointer;color:#aaa;font-size:15px;">&#x2715;</div><div style="font-size:1rem;font-weight:bold;color:#c0392b;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #fde8e8;">&#9733; 范营大包建房公司</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">地址：沈丘县范营乡村委西50米</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">电话：13522120000</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">时间：8:00～20:00</div><div style="margin-top:6px;"><span style="background:#fdecea;color:#c0392b;padding:2px 9px;border-radius:4px;font-size:0.75rem;">公司总部</span></div><div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid white;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);"></div></div>`;
-companyMarker.on('click', () => { infoWindow.setContent(companyPopupHtml); infoWindow.open(map, companyMarker.getPosition()); });
 
 // ==========================================
 // 渲染标注 & 侧边栏（可复用）
@@ -773,6 +792,33 @@ document.addEventListener('visibilitychange', function() {
         setTimeout(() => { map.resize(); }, 100);
     }
 });
+
+// ==========================================
+// 地图图层切换 & 刷新
+// ==========================================
+function switchLayer(type) {
+    if (type === 'street') {
+        map.setLayers([new AMap.TileLayer()]);
+        document.getElementById('btnStreet').classList.add('active');
+        document.getElementById('btnSatellite').classList.remove('active');
+    } else {
+        map.setLayers([new AMap.TileLayer.Satellite(), new AMap.TileLayer.RoadNet()]);
+        document.getElementById('btnSatellite').classList.add('active');
+        document.getElementById('btnStreet').classList.remove('active');
+    }
+}
+function locateAll() { map.setZoomAndCenter(12, [115.08, 33.46]); }
+
+// 手动刷新地图标注
+function refreshMap() {
+    villages = loadVillages();
+    Object.values(markerMap).forEach(m => { try { m.setMap(null); } catch(e) {} });
+    for (let k in markerMap) delete markerMap[k];
+    listEl.innerHTML = '';
+    villages.forEach(v => renderVillage(v));
+    updateCount();
+    showToast(`✅ 已刷新 ${villages.length} 个客户标注`);
+}
 
 
 // Toast 提示
