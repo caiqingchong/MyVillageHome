@@ -151,7 +151,7 @@ if (lazyImages.length > 0) {
     lazyImages.forEach(img => imageObserver.observe(img));
 }
 
-// 图片加载完成渐显效果
+// 图片渐进式加载完成处理
 document.addEventListener('DOMContentLoaded', () => {
     const images = document.querySelectorAll('img');
     
@@ -172,17 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
-});
-
-// 页面加载完成后初始化
-document.addEventListener('DOMContentLoaded', () => {
+    
     // 添加页面加载动画
     document.body.style.opacity = '0';
     document.body.style.transition = 'opacity 0.5s ease';
     setTimeout(() => {
         document.body.style.opacity = '1';
-    }, 100);
-
-    // 页面加载动画（无需额外初始化，banner 现为静态背景图）
+    },     100);
 });
+
 

@@ -5,45 +5,150 @@
     box-sizing: border-box;
 }
 
-/* 图片优化：加载占位和渐显效果 */
-img {
+/* ========================================
+   图片渐进式加载优化：模糊占位 → 高清显示
+   ======================================== */
+
+/* 图片占位容器 */
+.img-wrapper {
+    position: relative;
+    background: linear-gradient(135deg, #e8e4df 0%, #d4cfc8 100%);
+    overflow: hidden;
+}
+
+/* 图片默认模糊占位状态 */
+.img-wrapper img {
     opacity: 0;
-    transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+    filter: blur(20px);
+    transform: scale(1.1);
+    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
 }
 
-img.loaded,
-.hero-bg-img {
+/* 图片加载完成：移除模糊，清晰显示 */
+.img-wrapper img.loaded {
     opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
 }
 
-/* 画廊图片悬停放大 */
+/* 画廊图片容器 */
+.gallery-item {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+}
+
+/* 画廊图片模糊加载 */
 .gallery-item img {
+    opacity: 0;
+    filter: blur(15px);
+    transform: scale(1.1);
+    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
+}
+
+.gallery-item img.loaded {
     opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
 }
 
-.gallery-item img {
-    transition: opacity 0.4s ease-in-out, transform 0.4s ease;
-}
-
-.gallery-item:hover img {
+.gallery-item:hover img.loaded {
     transform: scale(1.05);
 }
 
-/* 设施图片悬停效果 */
-.facility-img-wrap img {
-    opacity: 1;
-    transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+/* 设施图片容器 */
+.facility-img-wrap {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f5f0eb 0%, #ebe5df 100%);
 }
 
-/* 联系卡片图片 */
-.contact-card img {
+.facility-img-wrap img {
+    opacity: 0;
+    filter: blur(15px);
+    transform: scale(1.1);
+    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.3s ease;
+}
+
+.facility-img-wrap img.loaded {
     opacity: 1;
-    transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+    filter: blur(0);
+    transform: scale(1);
+}
+
+.facility-img-wrap:hover img.loaded {
+    transform: scale(1.05);
 }
 
 /* 轮播图片 */
+.slide {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+}
+
 .slide img {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.05);
+    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
+}
+
+.slide img.loaded {
     opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+}
+
+/* 联系卡片图片 */
+.contact-card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #e8e4df 0%, #d4cfc8 100%);
+}
+
+.contact-card img {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.1);
+    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.3s ease;
+}
+
+.contact-card img.loaded {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+}
+
+.contact-card:hover img.loaded {
+    transform: scale(1.03);
+}
+
+/* Hero 背景图特殊处理 */
+.hero-bg-img {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+}
+
+/* 兰亭序书法图片 */
+.calligraphy-wrap {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f9f5f0 0%, #efe8e0 100%);
+}
+
+.calligraphy-wrap img {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.1);
+    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.3s ease;
+}
+
+.calligraphy-wrap img.loaded {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
 }
 
 body {
