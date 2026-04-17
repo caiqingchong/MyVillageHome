@@ -761,6 +761,17 @@ window.addEventListener('focus', function() {
     villages.forEach(v => renderVillage(v));
     updateCount();
     console.log('🔄 页面 focus，已刷新', villages.length, '个客户');
+
+    // 强制触发地图 resize，防止从 BFCache 返回后地图空白
+    setTimeout(() => { map.resize(); }, 100);
+});
+
+// 同时监听 visibilitychange，处理标签页切换场景
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        // 页面变为可见时，延迟触发地图 resize
+        setTimeout(() => { map.resize(); }, 100);
+    }
 });
 
 
