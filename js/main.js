@@ -151,6 +151,29 @@ if (lazyImages.length > 0) {
     lazyImages.forEach(img => imageObserver.observe(img));
 }
 
+// 图片加载完成渐显效果
+document.addEventListener('DOMContentLoaded', () => {
+    const images = document.querySelectorAll('img');
+    
+    images.forEach(img => {
+        // 如果图片已经在缓存中加载完成
+        if (img.complete) {
+            img.classList.add('loaded');
+        } else {
+            // 监听图片加载完成事件
+            img.addEventListener('load', function() {
+                this.classList.add('loaded');
+            });
+            
+            // 图片加载失败时也移除占位效果
+            img.addEventListener('error', function() {
+                this.classList.add('loaded');
+                console.log('图片加载失败:', this.src);
+            });
+        }
+    });
+});
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     // 添加页面加载动画

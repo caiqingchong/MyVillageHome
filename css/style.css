@@ -5,6 +5,47 @@
     box-sizing: border-box;
 }
 
+/* 图片优化：加载占位和渐显效果 */
+img {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+}
+
+img.loaded,
+.hero-bg-img {
+    opacity: 1;
+}
+
+/* 画廊图片悬停放大 */
+.gallery-item img {
+    opacity: 1;
+}
+
+.gallery-item img {
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease;
+}
+
+.gallery-item:hover img {
+    transform: scale(1.05);
+}
+
+/* 设施图片悬停效果 */
+.facility-img-wrap img {
+    opacity: 1;
+    transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+}
+
+/* 联系卡片图片 */
+.contact-card img {
+    opacity: 1;
+    transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+}
+
+/* 轮播图片 */
+.slide img {
+    opacity: 1;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
     line-height: 1.6;
