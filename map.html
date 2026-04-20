@@ -547,6 +547,18 @@ function initAMap() {
     companyMarker.setMap(map);
     companyMarker.on('click', () => { infoWindow.setContent(companyPopupHtml); infoWindow.open(map, companyMarker.getPosition()); });
 
+    // 渲染付井分公司标注
+    const branchPos = [115.0620, 33.4590];
+    const branchPopupHtml = `<div style="background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:14px 16px;min-width:200px;font-family:-apple-system,'PingFang SC',sans-serif;position:relative;"><div onclick="closeInfo()" style="position:absolute;top:8px;right:10px;cursor:pointer;color:#aaa;font-size:15px;">&#x2715;</div><div style="font-size:1rem;font-weight:bold;color:#1565c0;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #e3f2fd;">&#9679; 付井大包建房公司</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">地址：沈丘县付井镇金色阳光温泉酒店向西100米</div><div style="font-size:0.82rem;color:#555;line-height:1.9;">时间：8:00～20:00</div><div style="margin-top:6px;"><span style="background:#e3f2fd;color:#1565c0;padding:2px 9px;border-radius:4px;font-size:0.75rem;">分公司</span></div><div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid white;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);"></div></div>`;
+    const branchMarker = new AMap.Marker({
+        position: new AMap.LngLat(branchPos[0], branchPos[1]),
+        content: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;"><div style="width:38px;height:38px;background:radial-gradient(circle,#1e88e5,#1565c0);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(21,101,192,0.55);border:3px solid white;font-size:18px;line-height:1;">&#9679;</div><div style="margin-top:5px;background:rgba(21,101,192,0.92);color:white;font-size:11px;font-weight:bold;padding:3px 8px;border-radius:10px;white-space:nowrap;">付井大包建房公司</div></div>`,
+        offset: new AMap.Pixel(-40, -60),
+        zIndex: 200
+    });
+    branchMarker.setMap(map);
+    branchMarker.on('click', () => { infoWindow.setContent(branchPopupHtml); infoWindow.open(map, branchMarker.getPosition()); });
+
     // 页面重新获得焦点时（从 customer.html 返回），强制刷新数据和列表
     window.addEventListener('focus', function() {
         // 总是重新加载最新数据（不做比较，避免浮点精度问题）
