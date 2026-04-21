@@ -133,6 +133,62 @@
             margin-top: 2px;
         }
 
+        /* 搜索框 */
+        .search-box {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e0eee0;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 8px 32px 8px 30px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            outline: none;
+            background: #f7faf7;
+            color: #333;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+        .search-box input:focus {
+            border-color: #2c5f2d;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(44,95,45,0.1);
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+        .search-box .search-clear {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #bbb;
+            font-size: 1rem;
+            cursor: pointer;
+            display: none;
+            line-height: 1;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .search-box .search-clear:hover { color: #888; }
+        .search-no-result {
+            text-align: center;
+            padding: 24px 12px;
+            color: #bbb;
+            font-size: 0.82rem;
+            display: none;
+        }
+
         /* 底部提示 */
         .sidebar-tip {
             padding: 10px 14px;
@@ -328,13 +384,14 @@
 
         /* 移动端适配 */
         @media (max-width: 640px) {
-            .sidebar { width: 100%; height: 200px; flex-direction: row; }
+            .sidebar { width: 100%; height: 220px; flex-direction: row; }
             .map-body { flex-direction: column-reverse; }
             .sidebar-title { display: none; }
+            .search-box { width: 180px; flex-shrink: 0; border-bottom: none; border-right: 1px solid #e0eee0; display: flex; align-items: center; }
             .village-list { display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 6px; }
             .village-item { min-width: 120px; flex-shrink: 0; padding: 8px 10px; }
             .sidebar-tip { display: none; }
-            .map-controls { top: auto; bottom: 220px; right: 10px; }
+            .map-controls { top: auto; bottom: 230px; right: 10px; }
         }
     </style>
 </head>
@@ -357,6 +414,12 @@
             客户项目分布
             <span class="village-count" id="villageCount">-- 个</span>
         </div>
+        <!-- 搜索框 -->
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="搜索村庄或客户姓名…" oninput="onSearch(this.value)" autocomplete="off">
+            <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+        </div>
         <!-- 状态筛选按钮 -->
         <div class="filter-btns">
             <button class="filter-btn f-all"    id="fbAll"    onclick="setFilter('all')">全部</button>
@@ -364,6 +427,7 @@
             <button class="filter-btn"          id="fbDone"   onclick="setFilter('done')">&#x2705; 已完工</button>
         </div>
         <div class="village-list" id="villageList"></div>
+        <div class="search-no-result" id="searchNoResult">😶 没有找到匹配的客户</div>
         <div class="sidebar-tip">
             💡 点击村名可定位到地图上的位置；标注位置为估算坐标，如需精确调整请联系我们。
         </div>
@@ -523,11 +587,15 @@ let villages = loadVillages();
 // 初始化高德地图（由 API callback 自动调用）
 // ==========================================
 function initAMap() {
+    // 初始化信息窗口
+    infoWindow = new AMap.InfoWindow({ isCustom: true, content: '', offset: new AMap.Pixel(0, -60) });
+
     // 初始化高德地图
     map = new AMap.Map('map', {
         zoom: 12,
         center: [115.08, 33.46], // 沈丘县中心
-        resizeEnable: true
+        resizeEnable: true,
+        layers: [new AMap.TileLayer()]  // 显式指定默认图层，确保瓦片加载
     });
     map.addControl(new AMap.Scale({ unit: 'metric', showButton: false }));
     map.addControl(new AMap.ToolBar({ position: 'RT' }));
@@ -559,32 +627,58 @@ function initAMap() {
     branchMarker.setMap(map);
     branchMarker.on('click', () => { infoWindow.setContent(branchPopupHtml); infoWindow.open(map, branchMarker.getPosition()); });
 
+    // 多重延时 resize，解决首次进入页面地图底图瓦片不渲染的问题
+    setTimeout(() => { map.resize(); }, 100);
+    setTimeout(() => { map.resize(); }, 300);
+    setTimeout(() => { map.resize(); }, 800);
+    setTimeout(() => { map.resize(); }, 1500);
+
+    // 地图加载完成后再 resize 一次兜底
+    map.on('complete', function() {
+        map.resize();
+        // complete 之后再补一次，确保瓦片渲染
+        setTimeout(() => { map.resize(); }, 300);
+    });
+
+    // 点击地图显示坐标
+    const coordTip = document.getElementById('coordTip');
+    map.on('click', function(e) {
+        const lng = e.lnglat.getLng().toFixed(5), lat = e.lnglat.getLat().toFixed(5);
+        coordTip.style.display = 'block';
+        coordTip.textContent = `点击坐标：${lat}, ${lng}`;
+        setTimeout(() => { coordTip.style.display = 'none'; }, 4000);
+    });
+
     // 页面重新获得焦点时（从 customer.html 返回），强制刷新数据和列表
     window.addEventListener('focus', function() {
-        // 总是重新加载最新数据（不做比较，避免浮点精度问题）
+        if (!map) return;
         const fresh = loadVillages();
         villages = fresh;
-        // 清除旧标注
         Object.values(markerMap).forEach(m => {
             try { m.setMap(null); } catch(e) {}
         });
         for (let k in markerMap) delete markerMap[k];
-        // 清除旧列表
         listEl.innerHTML = '';
-        // 重新渲染
         villages.forEach(v => renderVillage(v));
         updateCount();
         console.log('🔄 页面 focus，已刷新', villages.length, '个客户');
-
-        // 强制触发地图 resize，防止从 BFCache 返回后地图空白
         setTimeout(() => { map.resize(); }, 100);
     });
 
-    // 同时监听 visibilitychange，处理标签页切换场景
+    // 监听 visibilitychange，处理标签页切换场景
     document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) {
-            // 页面变为可见时，延迟触发地图 resize
+        if (!document.hidden && map) {
             setTimeout(() => { map.resize(); }, 100);
+        }
+    });
+
+    // 监听 pageshow 事件，处理浏览器 BFCache 返回场景
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted && map) {
+            // 从 BFCache 恢复时，强制刷新图层和 resize
+            map.resize();
+            setTimeout(() => { map.resize(); }, 200);
+            setTimeout(() => { map.resize(); }, 600);
         }
     });
 }
@@ -598,14 +692,19 @@ function setFilter(type) {
     document.getElementById('fbAll').className    = 'filter-btn' + (type==='all'    ? ' f-all'    : '');
     document.getElementById('fbActive').className = 'filter-btn' + (type==='active' ? ' f-active'  : '');
     document.getElementById('fbDone').className   = 'filter-btn' + (type==='done'   ? ' f-done'   : '');
-    villages.forEach(v => {
-        const show = type === 'all' || v.status === type;
-        const marker = markerMap[v.id];
-        const item   = document.getElementById(`item-${v.id}`);
-        if (marker) marker.setMap(show ? map : null);
-        if (item)   item.style.display = show ? '' : 'none';
-    });
-    updateCount();
+    // 与搜索联动，统一走 applySearch
+    if (typeof applySearch === 'function') {
+        applySearch();
+    } else {
+        villages.forEach(v => {
+            const show = type === 'all' || v.status === type;
+            const marker = markerMap[v.id];
+            const item   = document.getElementById(`item-${v.id}`);
+            if (marker) marker.setMap(show ? map : null);
+            if (item)   item.style.display = show ? '' : 'none';
+        });
+        updateCount();
+    }
 }
 
 // ==========================================
@@ -631,7 +730,7 @@ function makeMarkerContent(num, name, isShenqiu, status) {
 // ==========================================
 // 信息窗口 & 距离计算
 // ==========================================
-const infoWindow = new AMap.InfoWindow({ isCustom: true, content: '', offset: new AMap.Pixel(0, -60) });
+let infoWindow;  // 在 initAMap 中初始化
 function closeInfo() { infoWindow.close(); }
 
 function calcDist(pos1, pos2) {
@@ -767,8 +866,7 @@ function shareLocation(id) {
     }
 }
 
-// 初始渲染
-villages.forEach(v => renderVillage(v));
+// 注意：初始渲染已在 initAMap 回调中执行，此处不再重复调用
 function updateCount() {
     const visible = currentFilter === 'all' ? villages.length
         : villages.filter(v => v.status === currentFilter).length;
@@ -776,34 +874,81 @@ function updateCount() {
 }
 updateCount();
 
-// 页面重新获得焦点时（从 customer.html 返回），强制刷新数据和列表
-window.addEventListener('focus', function() {
-    // 总是重新加载最新数据（不做比较，避免浮点精度问题）
-    const fresh = loadVillages();
-    villages = fresh;
-    // 清除旧标注
-    Object.values(markerMap).forEach(m => {
-        try { m.setMap(null); } catch(e) {}
+// ==========================================
+// 搜索功能
+// ==========================================
+let searchKeyword = '';
+
+function onSearch(val) {
+    searchKeyword = val.trim();
+    document.getElementById('searchClear').style.display = searchKeyword ? 'block' : 'none';
+    applySearch();
+}
+
+function clearSearch() {
+    searchKeyword = '';
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchClear').style.display = 'none';
+    applySearch();
+}
+
+function applySearch() {
+    const kw = searchKeyword.toLowerCase();
+    let matchCount = 0;
+
+    villages.forEach(v => {
+        const item = document.getElementById(`item-${v.id}`);
+        const marker = markerMap[v.id];
+        if (!item) return;
+
+        // 先判断状态筛选
+        const statusOk = currentFilter === 'all' || v.status === currentFilter;
+        // 再判断关键词匹配
+        const kwOk = !kw
+            || v.name.toLowerCase().includes(kw)
+            || v.customer.toLowerCase().includes(kw);
+
+        const show = statusOk && kwOk;
+        item.style.display = show ? '' : 'none';
+        if (marker) marker.setMap(show ? map : null);
+        if (show) matchCount++;
     });
-    for (let k in markerMap) delete markerMap[k];
-    // 清除旧列表
-    listEl.innerHTML = '';
-    // 重新渲染
-    villages.forEach(v => renderVillage(v));
-    updateCount();
-    console.log('🔄 页面 focus，已刷新', villages.length, '个客户');
 
-    // 强制触发地图 resize，防止从 BFCache 返回后地图空白
-    setTimeout(() => { map.resize(); }, 100);
-});
+    // 无结果提示
+    document.getElementById('searchNoResult').style.display = matchCount === 0 ? 'block' : 'none';
 
-// 同时监听 visibilitychange，处理标签页切换场景
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) {
-        // 页面变为可见时，延迟触发地图 resize
-        setTimeout(() => { map.resize(); }, 100);
+    // 搜索命中唯一结果时自动定位
+    if (kw && matchCount === 1) {
+        const hit = villages.find(v => {
+            const statusOk = currentFilter === 'all' || v.status === currentFilter;
+            return statusOk && (v.name.toLowerCase().includes(kw) || v.customer.toLowerCase().includes(kw));
+        });
+        if (hit && map) {
+            map.setZoomAndCenter(16, hit.pos);
+            const marker = markerMap[hit.id];
+            if (marker) {
+                const dist = calcDist(hit.pos, companyPos);
+                const status = hit.status || 'active';
+                const popupHtml = `<div style="background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:14px 16px;min-width:195px;font-family:-apple-system,'PingFang SC',sans-serif;position:relative;">
+                    <div onclick="closeInfo()" style="position:absolute;top:8px;right:10px;cursor:pointer;color:#aaa;font-size:15px;">&#x2715;</div>
+                    <div style="font-size:1rem;font-weight:bold;color:#1a3a1a;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #e0eee0;">📍 ${hit.name} ${status==='done'?'<span style="background:#fff0e0;color:#e8820c;font-size:0.72rem;padding:1px 6px;border-radius:4px;margin-left:4px;">已完工</span>':'<span style="background:#e8f4e8;color:#2c5f2d;font-size:0.72rem;padding:1px 6px;border-radius:4px;margin-left:4px;">施工中</span>'}</div>
+                    <div style="font-size:0.82rem;color:#555;line-height:1.9;">客户：<b>${hit.customer}</b></div>
+                    <div style="font-size:0.82rem;color:#555;line-height:1.9;">楼层：<b>${hit.floors}层</b> &nbsp; 面积：<b>${hit.area}㎡</b></div>
+                    <div style="font-size:0.82rem;color:#555;line-height:1.9;">距公司：<b style="color:#2c5f2d;">约 ${dist} km</b></div>
+                    ${hit.note ? `<div style="font-size:0.78rem;color:#d35400;margin-top:4px;padding:4px 6px;background:#fff3e0;border-radius:4px;">⚠️ ${hit.note}</div>` : ''}
+                    <a href="customer.html?id=${hit.id}" style="display:block;margin-top:10px;text-align:center;background:#2c5f2d;color:white;padding:8px;border-radius:7px;font-size:0.85rem;text-decoration:none;font-weight:bold;">📋 查看/编辑客户详情 →</a>
+                    <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid white;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);"></div>
+                </div>`;
+                setTimeout(() => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker.getPosition()); }, 400);
+            }
+        }
     }
-});
+
+    // 更新计数
+    document.getElementById('villageCount').textContent = `${matchCount} 个`;
+}
+
+// focus 和 visibilitychange 监听已在 initAMap 中统一注册
 
 // ==========================================
 // 地图图层切换 & 刷新
@@ -903,16 +1048,7 @@ function tryGeocodeInBackground(customer, geoAddr, poiAddr) {
     } catch(e) { console.warn('PlaceSearch异常:', e); }
 }
 
-// ==========================================
-// 点击地图显示坐标
-// ==========================================
-const coordTip = document.getElementById('coordTip');
-map.on('click', function(e) {
-    const lng = e.lnglat.getLng().toFixed(5), lat = e.lnglat.getLat().toFixed(5);
-    coordTip.style.display = 'block';
-    coordTip.textContent = `点击坐标：${lat}, ${lng}`;
-    setTimeout(() => { coordTip.style.display = 'none'; }, 4000);
-});
+// 点击地图显示坐标已移入 initAMap 中注册
 </script>
 </body>
 </html>
