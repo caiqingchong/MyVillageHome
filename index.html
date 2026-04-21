@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>乡村别墅 - 自然与舒适的完美结合</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- MD5加密库 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/spark-md5/3.1.0/spark-md5.min.js"></script>
+    <!-- MD5加密库（主CDN + 备用CDN） -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+    <script>if(typeof SparkMD5==='undefined'){document.write('<script src="https://cdn.bootcdn.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"><\/script>');}</script>
     <!-- 预加载首屏关键图片 -->
     <link rel="preload" as="image" href="images/banner4.jpg">
     <link rel="preload" as="image" href="images/banner1.jpg">
@@ -425,6 +426,11 @@
             return;
         }
 
+        if (typeof SparkMD5 === 'undefined') {
+            error.textContent = 'MD5库加载失败，请刷新页面重试';
+            error.classList.add('show');
+            return;
+        }
         const hashed = SparkMD5.hash(password);
         if (hashed === ADMIN_PASSWORD_MD5) {
             // 验证成功，关闭弹窗并跳转
